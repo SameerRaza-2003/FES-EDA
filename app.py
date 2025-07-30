@@ -41,61 +41,7 @@ def uniquify_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 st.set_page_config(layout="wide")
 inject_css("theme.css")
-# OPTIONAL: allow user to force mode; else keep Auto
-appearance = st.sidebar.radio("Appearance", ["Auto", "Light", "Dark"], index=0)
-if appearance != "Auto":
-    st.markdown(
-        f"""
-        <script>
-        (function(){{
-          const root = window.parent.document.documentElement;
-          root.setAttribute('data-mode','{'dark' if appearance=='Dark' else 'light'}');
-        }})();
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-else:
-    st.markdown(
-        """
-        <script>
-        (function(){
-          const root = window.parent.document.documentElement;
-          root.removeAttribute('data-mode');
-        })();
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
 
-# --- HERO title (uses .app-hero to remove top blank look & tie it together) ---
-st.markdown(
-    """
-    <div class="app-hero">
-      <div class="fes-title">
-        <h1>🚀 <span class="fes">FES</span> <span class="pulse">Pulse</span></h1>
-        <p class="tagline">Tracking every beat of your team's productivity</p>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-# --- Plotly helper: call on EVERY figure before st.plotly_chart ---
-def apply_plotly_theme(fig):
-    dark = (appearance == "Dark")
-    if appearance == "Auto":
-        # choose a sensible default for Auto; flip to True if most users are dark
-        dark = False
-    if dark:
-        fig.update_layout(template="plotly_dark",
-                          paper_bgcolor='rgba(0,0,0,0)',
-                          plot_bgcolor='rgba(0,0,0,0)',
-                          font_color='#cbd5e1')
-    else:
-        fig.update_layout(template="plotly_white",
-                          paper_bgcolor='rgba(0,0,0,0)',
-                          plot_bgcolor='rgba(0,0,0,0)')
 # ======================
 # 🌟 Custom App Title
 # ======================
