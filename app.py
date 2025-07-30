@@ -31,6 +31,159 @@ def uniquify_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 st.set_page_config(layout="wide")
+# ======================
+# 👨🏻‍💻 Developer Header (pretty & interactive)
+# ======================
+from streamlit.components.v1 import html as st_html
+
+DEV_NAME  = "Sameer Raza Malik"           # ← change if needed
+DEV_ROLE  = "Developer"
+DEV_EMAIL = "your.name@example.com"       # ← put your email here
+DEV_LINKS = {
+    "GitHub": "https://github.com/SameerRaza-2003",      # ← optional
+    "LinkedIn": "https://www.linkedin.com/in/...",       # ← optional
+    # "Website": "https://your-site.com",
+}
+
+def render_dev_header(name: str, role: str, email: str, links: dict[str, str] | None = None, height: int = 210):
+    # Build link pills (only those provided)
+    link_items = ""
+    if links:
+        for label, url in links.items():
+            if not url:
+                continue
+            link_items += f"""
+                <a class="pill" href="{url}" target="_blank" rel="noopener noreferrer" title="{label}">
+                    <span class="dot"></span>{label}
+                </a>
+            """
+
+    # HTML+CSS+JS (self-contained)
+    html_code = f"""
+    <div class="dev-wrap">
+      <div class="dev-card">
+        <div class="left">
+          <div class="avatar" aria-hidden="true">👨🏻‍💻</div>
+        </div>
+        <div class="mid">
+          <div class="name">{name}</div>
+          <div class="role">{role}</div>
+          <div class="row">
+            <span class="label">Email</span>
+            <a class="email" href="mailto:{email}">{email}</a>
+            <button class="copy" onclick="copyEmail()" title="Copy to clipboard">Copy</button>
+          </div>
+          <div class="links">{link_items}</div>
+        </div>
+        <div class="right">
+          <div class="badge">Developer</div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .dev-wrap {{
+        position: relative;
+        margin: 0 0 14px 0;
+      }}
+      .dev-card {{
+        display: grid;
+        grid-template-columns: 84px 1fr auto;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 18px;
+        background: linear-gradient(135deg, #f7faff 0%, #eef4ff 45%, #e9f7ff 100%);
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+      }}
+      .left .avatar {{
+        width: 64px; height: 64px;
+        display: grid; place-items: center;
+        font-size: 30px;
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+      }}
+      .mid .name {{
+        font-weight: 700; font-size: 20px; letter-spacing: 0.2px;
+        color: #0f172a;
+      }}
+      .mid .role {{
+        margin-top: 2px; color: #475569; font-size: 13px;
+      }}
+      .row {{
+        margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      }}
+      .label {{
+        font-size: 12px; color: #64748b; background: #f1f5f9; padding: 3px 8px; border-radius: 999px;
+      }}
+      .email {{
+        font-size: 13px; color: #0ea5e9; text-decoration: none; word-break: break-all;
+      }}
+      .email:hover {{ text-decoration: underline; }}
+      .copy {{
+        font-size: 12px; padding: 6px 10px; border-radius: 8px;
+        border: 1px solid rgba(14,165,233,0.5); background: #e0f2fe; color: #0369a1;
+        cursor: pointer;
+      }}
+      .copy:hover {{ background: #bae6fd; }}
+      .links {{
+        margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;
+      }}
+      .pill {{
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; color: #0b1324; text-decoration: none;
+        background: #ffffff; padding: 6px 10px; border-radius: 999px;
+        border: 1px solid rgba(0,0,0,0.08);
+      }}
+      .pill:hover {{ border-color: rgba(0,0,0,0.2); }}
+      .pill .dot {{
+        width: 8px; height: 8px; border-radius: 999px; background: #60a5fa;
+        box-shadow: 0 0 0 2px rgba(96,165,250,0.25);
+      }}
+      .right .badge {{
+        font-size: 11px; letter-spacing: .4px; text-transform: uppercase;
+        color: #2563eb; background: #dbeafe; border: 1px solid #bfdbfe;
+        padding: 6px 10px; border-radius: 999px;
+      }}
+
+      /* Responsive */
+      @media (max-width: 700px) {{
+        .dev-card {{ grid-template-columns: 60px 1fr; }}
+        .right {{ display: none; }}
+        .left .avatar {{ width: 54px; height: 54px; font-size: 26px; }}
+      }}
+    </style>
+
+    <script>
+      function copyEmail() {{
+        const email = "{email}";
+        if (navigator.clipboard && window.isSecureContext) {{
+          navigator.clipboard.writeText(email).then(() => {{
+            const btn = document.querySelector('.copy');
+            if (!btn) return;
+            const old = btn.textContent;
+            btn.textContent = "Copied!";
+            setTimeout(() => btn.textContent = "Copy", 1200);
+          }});
+        }} else {{
+          // Fallback
+          const ta = document.createElement('textarea');
+          ta.value = email; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          const btn = document.querySelector('.copy');
+          if (btn) {{ const old = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "Copy", 1200); }}
+        }}
+      }}
+    </script>
+    """
+    st_html(html_code, height=height)
+
+# 🔧 Render it (put this right after your st.title(...))
+render_dev_header(DEV_NAME, DEV_ROLE, DEV_EMAIL, DEV_LINKS, height=210)
+
 st.title("📋 Employee Task Dashboard (Interactive with Plotly)")
 
 # ========= EDIT THESE TWO (or three) CONSTANTS =========
