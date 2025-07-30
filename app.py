@@ -7,11 +7,34 @@ import gspread
 from google.oauth2.service_account import Credentials
 from dateutil import parser as dtparser
 
+
+
+# --- Ensure unique, clean column names everywhere ---
+def uniquify_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Strip whitespace and make duplicate header names unique by appending .1, .2, ...
+    e.g., 'Content Type', 'Content Type' -> 'Content Type', 'Content Type.1'
+    """
+    df = df.copy()
+    raw = df.columns.astype(str)
+    stripped = [c.strip() for c in raw]
+
+    seen = {}
+    new_cols = []
+    for name in stripped:
+        idx = seen.get(name, 0)
+        new_cols.append(f"{name}.{idx}" if idx else name)
+        seen[name] = idx + 1
+
+    df.columns = new_cols
+    return df
+
+
 st.set_page_config(layout="wide")
 st.title("📋 Employee Task Dashboard (Interactive with Plotly)")
 
 # ========= EDIT THESE TWO (or three) CONSTANTS =========
-JSON_PATH = None  # on Streamlit Cloud we’ll use st.secrets instead of a file
+JSON_PATH = None # on Streamlit Cloud we’ll use st.secrets instead of a file
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1yaW7V7hSBqOBZYbqIUKsGrhB8pVtWWrzq7t5scq3JVI/edit?gid=0#gid=0"  # your Google Sheet link
 SHEET_GID = "0"        # optional: keep "0" or set to the gid of the tab you want
 SHEET_TITLE = None     # optional alternative to GID: e.g., "Data". If set, it takes priority over GID.
@@ -64,6 +87,8 @@ def load_sheet_from_gdrive(json_path: str | None, sheet_url: str, sheet_gid: str
     if not values:
         return pd.DataFrame()
     df = pd.DataFrame(values[1:], columns=values[0])
+    df = uniquify_columns(df)  # <-- ensures headers are unique and stripped
+
     return df
 
 # ---------- Robust date parser ----------
@@ -144,9 +169,11 @@ uploaded_file = st.file_uploader("📂 Upload your CSV file", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
+    df = uniquify_columns(df)  # <-- make headers unique
 else:
     with st.spinner("Loading live Google Sheet…"):
         df = load_sheet_from_gdrive(JSON_PATH, SHEET_URL, sheet_gid=SHEET_GID, sheet_title=SHEET_TITLE)
+        df = uniquify_columns(df)  # <-- make headers unique
 
 # If still no data, stop
 if df is None or df.empty:
