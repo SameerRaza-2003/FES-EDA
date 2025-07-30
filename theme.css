@@ -1,14 +1,13 @@
-/* ================================
-   FES Pulse — Coherent Theme v2
-   Focus: centered layout, subtle elevation, clean rhythm
-   ================================ */
+/* =========================================
+   FES Pulse — Coherent Theme v3 (Light/Dark)
+   ========================================= */
 
-/* --------- Variables --------- */
+/* ---------- Light defaults ---------- */
 :root{
   /* Brand */
-  --brand:   #2563eb;  /* primary */
-  --brand-2: #0ea5e9;  /* accent */
-  --brand-3: #a78bfa;  /* secondary accent */
+  --brand:   #2563eb;
+  --brand-2: #0ea5e9;
+  --brand-3: #a78bfa;
 
   /* Text */
   --text-900: #0f172a;
@@ -16,8 +15,9 @@
   --text-500: #64748b;
 
   /* Surfaces */
-  --bg:      #f7faff;     /* page */
-  --panel:   #ffffff;     /* cards */
+  --bg:      #f7faff;                        /* page */
+  --panel:   #ffffff;                        /* cards */
+  --panel-2: #f8fafc;                        /* light fill */
   --line:    rgba(15, 23, 42, .08);
 
   /* Effects */
@@ -29,61 +29,118 @@
   --success: #16a34a;
   --danger:  #ef4444;
   --warn:    #f59e0b;
+
+  /* Plotly bg */
+  --plot-bg: #ffffff;
 }
 
-/* --------- Global / Layout --------- */
+/* ---------- Auto Dark (respects OS/Streamlit dark) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root{
+    --text-900: #e5e7eb;
+    --text-700: #cbd5e1;
+    --text-500: #94a3b8;
+
+    --bg:      #0b1220;                      /* page */
+    --panel:   #0f172a;                      /* cards */
+    --panel-2: #111827;
+    --line:    rgba(203, 213, 225, .10);
+
+    --shadow-s: 0 3px 10px rgba(0,0,0,.55);
+    --shadow-m: 0 10px 28px rgba(0,0,0,.50);
+
+    --plot-bg: #0f172a;
+  }
+}
+
+/* ---------- Optional manual override ----------
+   If you later add: <html data-mode="dark"> we’ll force dark.
+   (Useful if you build your own toggle.)
+-------------------------------------------------- */
+html[data-mode="dark"] :root{
+  --text-900: #e5e7eb;
+  --text-700: #cbd5e1;
+  --text-500: #94a3b8;
+
+  --bg:      #0b1220;
+  --panel:   #0f172a;
+  --panel-2: #111827;
+  --line:    rgba(203, 213, 225, .10);
+
+  --shadow-s: 0 3px 10px rgba(0,0,0,.55);
+  --shadow-m: 0 10px 28px rgba(0,0,0,.50);
+
+  --plot-bg: #0f172a;
+}
+
+/* ---------- Page & layout ---------- */
 html, body, .stApp {
   background:
-    radial-gradient(900px 480px at 10% -10%, #eef2ff 0%, transparent 60%),
-    radial-gradient(900px 480px at 90% -10%, #e0f2fe 0%, transparent 60%),
+    radial-gradient(900px 480px at 10% -10%, rgba(164, 202, 254, .20) 0%, transparent 60%),
+    radial-gradient(900px 480px at 90% -10%, rgba(125, 211, 252, .18) 0%, transparent 60%),
     var(--bg);
   color: var(--text-700);
 }
 
 .block-container {
-  /* Center the whole app nicely */
   max-width: 1180px;
   padding: 1.25rem 2rem 2rem;
-  margin: 0 auto;
+  margin: 0 auto; /* center the content column */
 }
 
-/* Space between Streamlit blocks */
-div[data-testid="stVerticalBlock"] {
-  row-gap: 1.1rem;
-}
-div[data-testid="stHorizontalBlock"] {
-  column-gap: 1.1rem;
-}
+/* Rhythm between Streamlit blocks */
+div[data-testid="stVerticalBlock"] { row-gap: 1.1rem; }
+div[data-testid="stHorizontalBlock"] { column-gap: 1.1rem; }
 
 /* Headings */
 h1, h2, h3 { color: var(--text-900); letter-spacing: .2px; }
 h1 { font-weight: 800; }
 h2 { font-weight: 700; margin-bottom: .25rem; }
-h3 { font-weight: 700; }
-
-/* Section header accent (applies to h2) */
 h2::after {
-  content: "";
-  display: block;
-  width: 48px;
-  height: 4px;
-  margin-top: 6px;
-  border-radius: 999px;
+  content: ""; display: block; width: 48px; height: 4px;
+  margin-top: 6px; border-radius: 999px;
   background: linear-gradient(90deg, var(--brand), var(--brand-2));
 }
+h3 { font-weight: 700; }
 
 /* Sidebar */
 section[data-testid="stSidebar"] {
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 100%);
   border-right: 1px solid var(--line);
 }
-section[data-testid="stSidebar"] .sidebar-content,
-section[data-testid="stSidebar"] [data-testid="stSidebarContent"]{
-  padding-top: .75rem;
+
+/* ---------- Unified Section Cards ---------- */
+/* Place:  st.markdown('<div class="section-anchor"></div>', unsafe_allow_html=True)
+           then: with st.container(): ...content...  */
+.section-anchor + div[data-testid="stVerticalBlock"],
+.section-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-m);
+  padding: 16px 18px 18px;
 }
 
-/* --------- Components with subtle elevation --------- */
+/* Section header inside card */
+.section-head {
+  display:flex; align-items:center; gap:12px;
+  padding-bottom:10px; margin-bottom:14px;
+  border-bottom: 1px dashed color-mix(in oklab, var(--text-700) 20%, transparent);
+}
+.section-head .ic {
+  width:36px; height:36px; display:grid; place-items:center;
+  border-radius:10px;
+  background: color-mix(in oklab, var(--brand) 18%, transparent);
+  color: var(--brand);
+  border: 1px solid color-mix(in oklab, var(--brand) 35%, transparent);
+}
+.section-head .title { font-size: 18px; font-weight: 800; color: var(--text-900); line-height: 1.15; }
+.section-head .subtitle { font-size: 13px; color: var(--text-500); margin-top:2px; }
 
+/* Optional tighter inner spacing */
+.section-body-tight > *:not(:last-child) { margin-bottom: .6rem; }
+
+/* ---------- Components ---------- */
 /* Metrics */
 [data-testid="stMetric"] {
   background: var(--panel);
@@ -92,9 +149,7 @@ section[data-testid="stSidebar"] [data-testid="stSidebarContent"]{
   padding: 12px;
   box-shadow: var(--shadow-s);
 }
-[data-testid="stMetric"] [data-testid="stMetricValue"] {
-  color: var(--brand);
-}
+[data-testid="stMetric"] [data-testid="stMetricValue"] { color: var(--brand); }
 
 /* Expanders */
 details {
@@ -109,51 +164,53 @@ details {
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--shadow-s);
+  background: var(--panel);
+}
+[data-testid="stDataFrame"] .sticky thead tr th {
+  background: var(--panel-2) !important;
+  color: var(--text-900) !important;
+  font-weight: 700;
 }
 
 /* Tables */
 [data-testid="stTable"] table {
   border-collapse: collapse !important;
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow-s);
 }
 [data-testid="stTable"] th {
-  background: #f8fafc;
+  background: var(--panel-2);
   color: var(--text-900);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: .4px;
-  padding: 12px 10px !important;
-  text-transform: uppercase;
+  font-weight: 700; font-size: 12px; letter-spacing: .4px;
+  padding: 12px 10px !important; text-transform: uppercase;
   border-bottom: 1px solid var(--line);
 }
 [data-testid="stTable"] td {
   padding: 10px 10px !important;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
 }
 
-/* Plotly charts */
+/* Plotly charts — style the container only; Plotly colors keep default */
 .js-plotly-plot, .plot-container {
-  background: var(--panel);
+  background: var(--plot-bg);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--shadow-s);
   padding: 8px;
 }
 
-/* Alerts (info/warn/error) */
+/* Alerts */
 .stAlert {
   border-radius: 12px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-s);
+  background: var(--panel);
 }
 
-/* --------- Controls --------- */
-
-/* Buttons */
+/* ---------- Controls ---------- */
 .stButton > button,
 .stDownloadButton > button {
   border-radius: 999px !important;
@@ -168,30 +225,28 @@ details {
 .stButton > button:hover,
 .stDownloadButton > button:hover {
   transform: translateY(-1px);
-  filter: brightness(1.02);
+  filter: brightness(1.03);
   box-shadow: 0 10px 22px rgba(37, 99, 235, .26);
 }
 .stButton > button:active,
-.stDownloadButton > button:active {
-  transform: translateY(0);
-}
+.stDownloadButton > button:active { transform: translateY(0); }
 
 /* Inputs & Selects */
 div[data-baseweb="input"],
 div[data-baseweb="textarea"],
 div[data-baseweb="select"],
 div[data-baseweb="datepicker"] {
-  background: #fff;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
 }
 div[data-baseweb="input"]:focus-within,
 div[data-baseweb="textarea"]:focus-within,
 div[data-baseweb="select"]:focus-within,
 div[data-baseweb="datepicker"]:focus-within {
-  border-color: rgba(37,99,235,.55);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  border-color: color-mix(in oklab, var(--brand) 65%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 25%, transparent);
 }
 
 /* Slider */
@@ -200,67 +255,45 @@ div[data-baseweb="slider"] .rc-slider-handle { border-color: var(--brand) !impor
 
 /* Radio / Checkbox hit areas */
 label[data-baseweb="radio"] > div,
-label[data-baseweb="checkbox"] > div{
-  border-radius: 10px;
-  padding: .15rem .35rem;
-}
-
-/* --------- Typography / Utilities --------- */
-.small-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #e0f2fe;
-  color: #0369a1;
-  border: 1px solid rgba(14,165,233,0.25);
-  font-size: 12px;
-}
+label[data-baseweb="checkbox"] > div { border-radius: 10px; padding: .15rem .35rem; }
 
 /* Links */
 a { color: var(--brand); }
 a:hover { color: #1e40af; }
 
 /* Code blocks */
-code, pre {
-  background: #0b10231a;
-  border-radius: 8px;
-  padding: 2px 6px;
-}
+code, pre { background: color-mix(in oklab, var(--text-900) 10%, transparent); border-radius: 8px; padding: 2px 6px; }
 
-/* --------- Scrollbars --------- */
-* { scrollbar-width: thin; scrollbar-color: rgba(37, 99, 235, .6) rgba(15, 23, 42, .06); }
+/* ---------- Scrollbars ---------- */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--brand) 60%, transparent) color-mix(in oklab, var(--text-900) 6%, transparent); }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-track { background: rgba(15,23,42,.06); border-radius: 10px; }
+*::-webkit-scrollbar-track { background: color-mix(in oklab, var(--text-900) 6%, transparent); border-radius: 10px; }
 *::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, var(--brand), var(--brand-2));
   border-radius: 10px;
 }
 
-/* --------- Optional helpers (your custom legend & footer) --------- */
-/* Legend card (right column) */
+/* ---------- Your custom legend & footer helpers ---------- */
 .legend-card {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--panel);
   box-shadow: var(--shadow-s);
   padding: 10px 12px;
 }
 .legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-.legend-swatch {
-  width:12px; height:12px; border-radius:2px; flex:0 0 auto;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.1) inset;
-}
+.legend-swatch { width:12px; height:12px; border-radius:2px; flex:0 0 auto; box-shadow: 0 0 0 1px color-mix(in oklab, var(--text-900) 15%, transparent) inset; }
 .legend-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color: var(--text-700); }
 
-/* Footer/Header cards you added */
 .dev-footer-wrap .dev-footer,
 .dev-wrap .dev-card {
   border-radius: 16px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-m);
+  background: var(--panel);
 }
 
-/* --------- Mobile tweaks --------- */
+/* ---------- Mobile tweaks ---------- */
 @media (max-width: 720px) {
   .block-container { padding: 1rem 1rem 1.5rem; }
   h1 { font-size: 1.75rem; }
