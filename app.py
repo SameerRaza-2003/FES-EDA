@@ -520,10 +520,10 @@ if selected_designer == "All":
                         type_order = type_totals.index.tolist()
 
                         # --- Color mapping (consistent between chart and custom legend) ---
-                        palette = px.colors.qualitative.D3  # or Plotly, Set3, etc.
+                        palette = px.colors.qualitative.D3  # choose any Plotly qualitative palette
                         color_map = {lbl: palette[i % len(palette)] for i, lbl in enumerate(type_order)}
 
-                        # --- Build stacked vertical bar chart (legend disabled; we'll draw our own) ---
+                        # --- Build stacked vertical bar chart (disable built-in legend) ---
                         fig_emp = px.bar(
                             agg,
                             x="Designer Name",
@@ -554,7 +554,7 @@ if selected_designer == "All":
                             ),
                             textposition="outside",
                             cliponaxis=False,
-                            showlegend=False,  # we'll use our own legend in the left column
+                            showlegend=False,  # we'll render our own legend in the right column
                         )
 
                         fig_emp.update_layout(
@@ -565,19 +565,20 @@ if selected_designer == "All":
                             showlegend=False,
                         )
 
-                        # --- Two-column layout: custom legend (left) + chart (right) ---
-                        lcol, rcol = st.columns([0.28, 0.72])
+                        # --- Two-column layout: chart (left) + custom legend (right) ---
+                        c_chart, c_legend = st.columns([0.72, 0.28])  # adjust ratios if needed
 
-                        # Custom legend (left): colored squares with "type (points)"
-                        with lcol:
+                        with c_chart:
+                            st.plotly_chart(fig_emp, use_container_width=True)
+
+                        with c_legend:
                             st.markdown("**Legend — Type (points)**")
-                            # Build HTML list with colored squares matching color_map
+                            # Build HTML legend with colored squares & labels
                             legend_html = "<div style='line-height:1.6;'>"
                             for lbl in type_order:
                                 color = color_map.get(lbl, "#888")
-                                # square + label text
                                 legend_html += (
-                                    f"<div style='display:flex;align-items:center;margin-bottom:4px;'>"
+                                    f"<div style='display:flex;align-items:center;margin-bottom:6px;'>"
                                     f"<span style='display:inline-block;width:12px;height:12px;"
                                     f"background:{color};border-radius:2px;margin-right:8px;'></span>"
                                     f"<span>{lbl}</span>"
@@ -585,12 +586,7 @@ if selected_designer == "All":
                                 )
                             legend_html += "</div>"
                             st.markdown(legend_html, unsafe_allow_html=True)
-
-                            # Optional: quick explanation of hover
-                            st.caption("Hover bars to see designer/type tasks × points and subtotals.")
-
-                        with rcol:
-                            st.plotly_chart(fig_emp, use_container_width=True)
+                            st.caption("Hover a bar to see tasks × points and subtotals.")
 
                         # 5) Insights (line bullets)
                         st.markdown("**🔎 Monthly insights (completed only)**")
@@ -643,6 +639,7 @@ if selected_designer == "All":
                             st.markdown(ln)
 else:
     st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
+
 
 
 # ---- Export (useful extra) ----
