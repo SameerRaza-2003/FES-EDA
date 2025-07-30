@@ -519,7 +519,11 @@ if selected_designer == "All":
                         type_totals = agg.groupby("TypeLabel")["Points"].sum().sort_values(ascending=False)
                         type_order = type_totals.index.tolist()
 
-                        # --- Build stacked vertical bar chart ---
+                        # --- Color mapping (consistent between chart and custom legend) ---
+                        palette = px.colors.qualitative.D3  # or Plotly, Set3, etc.
+                        color_map = {lbl: palette[i % len(palette)] for i, lbl in enumerate(type_order)}
+
+                        # --- Build stacked vertical bar chart (legend disabled; we'll draw our own) ---
                         fig_emp = px.bar(
                             agg,
                             x="Designer Name",
@@ -529,6 +533,7 @@ if selected_designer == "All":
                                 "Designer Name": designer_order,
                                 "TypeLabel": type_order,
                             },
+                            color_discrete_map=color_map,
                             barmode="stack",
                             text="Points",
                         )
@@ -549,37 +554,43 @@ if selected_designer == "All":
                             ),
                             textposition="outside",
                             cliponaxis=False,
+                            showlegend=False,  # we'll use our own legend in the left column
                         )
-
-                        # -------- Legend OUTSIDE on the LEFT (clean, non-overlapping) --------
-                        # Compute a sensible left margin based on legend size
-                        n_types = max(1, len(type_order))
-                        max_label_len = max((len(str(lbl)) for lbl in type_order), default=10)
-                        # Heuristic for legend width; adjust if needed
-                        legend_width_px = min(340, max(200, 9 * min(max_label_len, 24)))
-                        left_margin = legend_width_px + 50  # space for legend + cushion
 
                         fig_emp.update_layout(
                             height=max(380, 26 * max(1, len(designer_order))),
-                            margin=dict(l=left_margin, r=20, t=30, b=60),
-                            legend=dict(
-                                title="Type (points)",
-                                orientation="v",
-                                yanchor="top", y=1.0,
-                                xanchor="left", x=-0.02,  # just outside the plotting area on the left
-                                bgcolor="rgba(255,255,255,0.9)",
-                                bordercolor="rgba(0,0,0,0.15)",
-                                borderwidth=1,
-                                font=dict(size=12),
-                                tracegroupgap=6,
-                                itemclick="toggleothers",
-                                itemdoubleclick="toggle",
-                            ),
+                            margin=dict(l=10, r=10, t=30, b=60),
                             xaxis_title="",
                             yaxis_title="Points",
+                            showlegend=False,
                         )
 
-                        st.plotly_chart(fig_emp, use_container_width=True)
+                        # --- Two-column layout: custom legend (left) + chart (right) ---
+                        lcol, rcol = st.columns([0.28, 0.72])
+
+                        # Custom legend (left): colored squares with "type (points)"
+                        with lcol:
+                            st.markdown("**Legend — Type (points)**")
+                            # Build HTML list with colored squares matching color_map
+                            legend_html = "<div style='line-height:1.6;'>"
+                            for lbl in type_order:
+                                color = color_map.get(lbl, "#888")
+                                # square + label text
+                                legend_html += (
+                                    f"<div style='display:flex;align-items:center;margin-bottom:4px;'>"
+                                    f"<span style='display:inline-block;width:12px;height:12px;"
+                                    f"background:{color};border-radius:2px;margin-right:8px;'></span>"
+                                    f"<span>{lbl}</span>"
+                                    f"</div>"
+                                )
+                            legend_html += "</div>"
+                            st.markdown(legend_html, unsafe_allow_html=True)
+
+                            # Optional: quick explanation of hover
+                            st.caption("Hover bars to see designer/type tasks × points and subtotals.")
+
+                        with rcol:
+                            st.plotly_chart(fig_emp, use_container_width=True)
 
                         # 5) Insights (line bullets)
                         st.markdown("**🔎 Monthly insights (completed only)**")
