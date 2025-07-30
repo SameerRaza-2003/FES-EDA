@@ -359,3 +359,98 @@ code, pre { background: color-mix(in oklab, var(--text-900) 10%, transparent); b
   .dev-footer { grid-template-columns: 1fr; }
   .dev-footer .right .links{ justify-content:flex-start; }
 }
+/* =======================
+   LEGEND — force theme bg
+   ======================= */
+
+/* Theme variables for this patch */
+:root{
+  --legend-bg: color-mix(in oklab, var(--panel) 96%, transparent);
+  --dev-accent: color-mix(in oklab, var(--brand) 45%, var(--brand-2) 55%);
+}
+
+/* Manual dark mode keeps same tokens */
+html[data-mode="dark"] :root{
+  --legend-bg: color-mix(in oklab, var(--panel) 96%, transparent);
+  --dev-accent: color-mix(in oklab, var(--brand) 45%, var(--brand-2) 55%);
+}
+
+/* 1) Override the inline white background your app injects.
+      We match on overflow-y (present in your legend) and on "background: rgba(255"
+      with/without spaces so it works across browsers. */
+.block-container :is(
+  div[style*="overflow-y"],
+  div[style*="background:rgba(255"],
+  div[style*="background: rgba(255"]
+){
+  background: var(--legend-bg) !important;
+  border-color: var(--line) !important;
+  color: var(--text-700) !important;
+}
+
+/* 2) Ensure text inside that container inherits readable color */
+.block-container :is(
+  div[style*="overflow-y"],
+  div[style*="background:rgba(255"],
+  div[style*="background: rgba(255"]
+) span{
+  color: var(--text-700) !important;
+}
+
+/* 3) If you switch to class-based legend (recommended), it will use these styles */
+.legend-card{
+  background: var(--legend-bg) !important;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-s);
+  padding: 10px 12px;
+}
+.legend-item{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.legend-item:last-child{ margin-bottom:0; }
+.legend-swatch{
+  width:12px; height:12px; border-radius:2px; flex:0 0 auto;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--text-900) 18%, transparent) inset;
+}
+.legend-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color: var(--text-700); }
+.legend-item:hover .legend-label,
+.legend-item:focus-within .legend-label{ color: var(--text-900); }
+
+/* ==========================
+   DEV CARD — blended accent
+   ========================== */
+
+.dev-footer-wrap .dev-footer{
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--dev-accent) 10%, transparent) 0%, transparent 38%),
+    var(--panel) !important;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-m);
+}
+
+.dev-footer .avatar{
+  background: var(--panel-2);
+  border: 1px solid color-mix(in oklab, var(--dev-accent) 40%, var(--line));
+  box-shadow: 0 4px 10px color-mix(in oklab, var(--dev-accent) 14%, transparent);
+}
+
+.dev-footer .copy{
+  border: 1px solid color-mix(in oklab, var(--dev-accent) 55%, transparent);
+  background: color-mix(in oklab, var(--dev-accent) 12%, transparent);
+  color: var(--text-900);
+}
+.dev-footer .copy:hover{
+  background: color-mix(in oklab, var(--dev-accent) 18%, transparent);
+}
+
+.pill{
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.pill .dot{
+  background: var(--dev-accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--dev-accent) 25%, transparent);
+}
+.pill:hover{
+  border-color: color-mix(in oklab, var(--text-900) 25%, transparent);
+  box-shadow: 0 3px 12px color-mix(in oklab, var(--dev-accent) 16%, transparent);
+}
