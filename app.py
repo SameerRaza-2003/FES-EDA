@@ -40,7 +40,6 @@ def uniquify_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 st.set_page_config(layout="wide")
-inject_css("theme.css")
 # ======================
 # 🌟 Custom App Title
 # ======================
