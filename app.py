@@ -11,7 +11,7 @@ st.set_page_config(layout="wide")
 st.title("📋 Employee Task Dashboard (Interactive with Plotly)")
 
 # ========= EDIT THESE TWO (or three) CONSTANTS =========
-JSON_PATH = "fes-employee-eda-01c012142a64.json"   # path to your downloaded service-account JSON
+JSON_PATH = None  # on Streamlit Cloud we’ll use st.secrets instead of a file
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1yaW7V7hSBqOBZYbqIUKsGrhB8pVtWWrzq7t5scq3JVI/edit?gid=0#gid=0"  # your Google Sheet link
 SHEET_GID = "0"        # optional: keep "0" or set to the gid of the tab you want
 SHEET_TITLE = None     # optional alternative to GID: e.g., "Data". If set, it takes priority over GID.
@@ -24,11 +24,24 @@ SCOPES = [
 ]
 
 @st.cache_data(ttl=300)
-def load_sheet_from_gdrive(json_path: str, sheet_url: str, sheet_gid: str | None = None, sheet_title: str | None = None) -> pd.DataFrame:
-    """Load a private Google Sheet using a service-account JSON (no Streamlit secrets required)."""
-    creds = Credentials.from_service_account_file(json_path, scopes=SCOPES)
+def load_sheet_from_gdrive(json_path: str | None, sheet_url: str, sheet_gid: str | None = None, sheet_title: str | None = None) -> pd.DataFrame:
+    """Load a private Google Sheet using Streamlit Secrets if available; otherwise a local JSON file."""
+    # --- Build credentials ---
+    if "gcp_service_account" in st.secrets:
+        info = dict(st.secrets["gcp_service_account"])
+        # Convert literal '\n' to real newlines if needed
+        pk = info.get("private_key", "")
+        if "\\n" in pk:
+            info["private_key"] = pk.replace("\\n", "\n")
+        creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+    else:
+        if not json_path:
+            raise ValueError("No credentials found: set JSON_PATH or define [gcp_service_account] in Streamlit Secrets.")
+        creds = Credentials.from_service_account_file(json_path, scopes=SCOPES)
+
     gc = gspread.authorize(creds)
 
+    # --- The rest of your original code stays the same ---
     m = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", sheet_url)
     if not m:
         raise ValueError("Invalid Google Sheet URL")
@@ -36,7 +49,6 @@ def load_sheet_from_gdrive(json_path: str, sheet_url: str, sheet_gid: str | None
 
     sh = gc.open_by_key(sheet_id)
 
-    # Pick worksheet: priority = title > gid > first sheet
     ws = None
     if sheet_title:
         ws = sh.worksheet(sheet_title)
