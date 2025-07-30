@@ -192,19 +192,18 @@ def _minmax_over_cols(df_in: pd.DataFrame, cols: list[str]) -> tuple[pd.Timestam
     return (min(mins) if mins else pd.NaT, max(maxs) if maxs else pd.NaT)
 
 # ---------- Data source: CSV upload OR Google Sheet ----------
-uploaded_file = st.file_uploader("📂 Upload your CSV file", type=["csv"])
-
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    df = uniquify_columns(df)  # <-- make headers unique
-else:
+# ---------- Data source: Google Sheet only (defensive) ----------
+try:
     with st.spinner("Loading live Google Sheet…"):
         df = load_sheet_from_gdrive(JSON_PATH, SHEET_URL, sheet_gid=SHEET_GID, sheet_title=SHEET_TITLE)
         df = uniquify_columns(df)  # <-- make headers unique
+except Exception as e:
+    # Avoid leaking secrets; show a friendly hint
+    st.error("Could not load data from Google Sheets. Please verify the Sheet URL, sharing permissions, and service account credentials.")
+    st.stop()
 
-# If still no data, stop
 if df is None or df.empty:
-    st.info("No data found. Upload a CSV or check your Google Sheet link/permissions.")
+    st.info("No data found in the selected sheet/tab. Check the worksheet name/GID and that the first row is a header.")
     st.stop()
 
 # ---------- Clean & prepare ----------
