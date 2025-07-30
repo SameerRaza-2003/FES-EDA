@@ -1,8 +1,11 @@
 /* =========================================
-   FES Pulse — Coherent Theme v3 (Light/Dark)
+   FES Pulse — Unified Theme (Auto Light/Dark)
+   - Light is default
+   - Dark is applied via prefers-color-scheme *or*
+     an explicit html[data-mode="dark"] attribute
    ========================================= */
 
-/* ---------- Light defaults ---------- */
+/* ---------- LIGHT default variables ---------- */
 :root{
   /* Brand */
   --brand:   #2563eb;
@@ -15,13 +18,13 @@
   --text-500: #64748b;
 
   /* Surfaces */
-  --bg:      #f7faff;                        /* page */
-  --panel:   #ffffff;                        /* cards */
-  --panel-2: #f8fafc;                        /* light fill */
+  --bg:      #f7faff;   /* page */
+  --panel:   #ffffff;   /* cards */
+  --panel-2: #f8fafc;   /* subtle filled areas */
   --line:    rgba(15, 23, 42, .08);
 
   /* Effects */
-  --radius:  14px;
+  --radius:   14px;
   --shadow-s: 0 4px 10px rgba(15, 23, 42, .06);
   --shadow-m: 0 10px 24px rgba(15, 23, 42, .08);
 
@@ -30,21 +33,24 @@
   --danger:  #ef4444;
   --warn:    #f59e0b;
 
-  /* Plotly bg */
+  /* Plotly */
   --plot-bg: #ffffff;
 }
 
-/* ---------- Auto Dark (respects OS/Streamlit dark) ---------- */
+/* ---------- DARK overrides via system preference ---------- */
 @media (prefers-color-scheme: dark) {
   :root{
+    --brand:   #3b82f6;      /* slightly brighter in dark */
+    --brand-2: #22d3ee;
+
     --text-900: #e5e7eb;
     --text-700: #cbd5e1;
     --text-500: #94a3b8;
 
-    --bg:      #0b1220;                      /* page */
-    --panel:   #0f172a;                      /* cards */
+    --bg:      #0b1220;
+    --panel:   #0f172a;
     --panel-2: #111827;
-    --line:    rgba(203, 213, 225, .10);
+    --line:    rgba(203, 213, 225, .12);
 
     --shadow-s: 0 3px 10px rgba(0,0,0,.55);
     --shadow-m: 0 10px 28px rgba(0,0,0,.50);
@@ -53,11 +59,13 @@
   }
 }
 
-/* ---------- Optional manual override ----------
-   If you later add: <html data-mode="dark"> we’ll force dark.
-   (Useful if you build your own toggle.)
--------------------------------------------------- */
+/* ---------- Manual override (optional)
+   Add data-mode='dark' or 'light' to <html> to force mode.
+----------------------------------------- */
 html[data-mode="dark"] :root{
+  --brand:   #3b82f6;
+  --brand-2: #22d3ee;
+
   --text-900: #e5e7eb;
   --text-700: #cbd5e1;
   --text-500: #94a3b8;
@@ -65,19 +73,22 @@ html[data-mode="dark"] :root{
   --bg:      #0b1220;
   --panel:   #0f172a;
   --panel-2: #111827;
-  --line:    rgba(203, 213, 225, .10);
+  --line:    rgba(203, 213, 225, .12);
 
   --shadow-s: 0 3px 10px rgba(0,0,0,.55);
   --shadow-m: 0 10px 28px rgba(0,0,0,.50);
 
   --plot-bg: #0f172a;
 }
+html[data-mode="light"] :root{
+  /* no changes; stays on light set above */
+}
 
 /* ---------- Page & layout ---------- */
 html, body, .stApp {
   background:
-    radial-gradient(900px 480px at 10% -10%, rgba(164, 202, 254, .20) 0%, transparent 60%),
-    radial-gradient(900px 480px at 90% -10%, rgba(125, 211, 252, .18) 0%, transparent 60%),
+    radial-gradient(900px 480px at 10% -10%, color-mix(in oklab, var(--brand) 18%, transparent) 0%, transparent 60%),
+    radial-gradient(900px 480px at 90% -10%, color-mix(in oklab, var(--brand-2) 16%, transparent) 0%, transparent 60%),
     var(--bg);
   color: var(--text-700);
 }
@@ -85,14 +96,13 @@ html, body, .stApp {
 .block-container {
   max-width: 1180px;
   padding: 1.25rem 2rem 2rem;
-  margin: 0 auto; /* center the content column */
+  margin: 0 auto; /* center column */
 }
 
-/* Rhythm between Streamlit blocks */
 div[data-testid="stVerticalBlock"] { row-gap: 1.1rem; }
 div[data-testid="stHorizontalBlock"] { column-gap: 1.1rem; }
 
-/* Headings */
+/* ---------- Headings ---------- */
 h1, h2, h3 { color: var(--text-900); letter-spacing: .2px; }
 h1 { font-weight: 800; }
 h2 { font-weight: 700; margin-bottom: .25rem; }
@@ -103,15 +113,22 @@ h2::after {
 }
 h3 { font-weight: 700; }
 
-/* Sidebar */
+/* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"] {
   background: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 100%);
   border-right: 1px solid var(--line);
 }
 
+/* ---------- Title (theme-aware) ---------- */
+.fes-title { text-align:center; padding: 8px 0 6px; margin-bottom: 12px; }
+.fes-title h1 { margin:0; font-size: 42px; font-weight: 800; color: var(--text-900); }
+.fes-title .fes { color: var(--text-900); }
+.fes-title .pulse { color: var(--brand); }
+.fes-title .tagline { margin-top: 6px; font-size:16px; color: var(--text-500); font-style: italic; }
+@media (max-width: 720px){ .fes-title h1 { font-size: 32px; } }
+
 /* ---------- Unified Section Cards ---------- */
-/* Place:  st.markdown('<div class="section-anchor"></div>', unsafe_allow_html=True)
-           then: with st.container(): ...content...  */
+/* Use: st.markdown('<div class="section-anchor"></div>', unsafe_allow_html=True); then with st.container(): ... */
 .section-anchor + div[data-testid="stVerticalBlock"],
 .section-card {
   background: var(--panel);
@@ -137,11 +154,9 @@ section[data-testid="stSidebar"] {
 .section-head .title { font-size: 18px; font-weight: 800; color: var(--text-900); line-height: 1.15; }
 .section-head .subtitle { font-size: 13px; color: var(--text-500); margin-top:2px; }
 
-/* Optional tighter inner spacing */
 .section-body-tight > *:not(:last-child) { margin-bottom: .6rem; }
 
 /* ---------- Components ---------- */
-/* Metrics */
 [data-testid="stMetric"] {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -151,7 +166,6 @@ section[data-testid="stSidebar"] {
 }
 [data-testid="stMetric"] [data-testid="stMetricValue"] { color: var(--brand); }
 
-/* Expanders */
 details {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -159,7 +173,6 @@ details {
   box-shadow: var(--shadow-s);
 }
 
-/* DataFrames (arrow) */
 [data-testid="stDataFrame"] {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -172,7 +185,6 @@ details {
   font-weight: 700;
 }
 
-/* Tables */
 [data-testid="stTable"] table {
   border-collapse: collapse !important;
   background: var(--panel);
@@ -193,7 +205,7 @@ details {
   border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
 }
 
-/* Plotly charts — style the container only; Plotly colors keep default */
+/* Plotly chart container (the figure itself uses template you set in Python) */
 .js-plotly-plot, .plot-container {
   background: var(--plot-bg);
   border: 1px solid var(--line);
@@ -214,24 +226,23 @@ details {
 .stButton > button,
 .stDownloadButton > button {
   border-radius: 999px !important;
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-  border: 1px solid rgba(37,99,235,0.25);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--brand) 85%, #fff) 0%, var(--brand) 100%);
+  border: 1px solid color-mix(in oklab, var(--brand) 30%, transparent);
   color: #fff;
   padding: .55rem 1rem;
   font-weight: 600;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, .22);
+  box-shadow: 0 6px 16px color-mix(in oklab, var(--brand) 25%, transparent);
   transition: transform .04s ease, box-shadow .2s ease, filter .2s ease;
 }
 .stButton > button:hover,
 .stDownloadButton > button:hover {
   transform: translateY(-1px);
   filter: brightness(1.03);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, .26);
+  box-shadow: 0 10px 22px color-mix(in oklab, var(--brand) 32%, transparent);
 }
 .stButton > button:active,
 .stDownloadButton > button:active { transform: translateY(0); }
 
-/* Inputs & Selects */
 div[data-baseweb="input"],
 div[data-baseweb="textarea"],
 div[data-baseweb="select"],
@@ -239,29 +250,26 @@ div[data-baseweb="datepicker"] {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
+  color: var(--text-700);
 }
 div[data-baseweb="input"]:focus-within,
 div[data-baseweb="textarea"]:focus-within,
 div[data-baseweb="select"]:focus-within,
 div[data-baseweb="datepicker"]:focus-within {
-  border-color: color-mix(in oklab, var(--brand) 65%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 25%, transparent);
+  border-color: color-mix(in oklab, var(--brand) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 18%, transparent);
 }
 
-/* Slider */
 div[data-baseweb="slider"] .rc-slider-track { background: var(--brand) !important; }
 div[data-baseweb="slider"] .rc-slider-handle { border-color: var(--brand) !important; }
 
-/* Radio / Checkbox hit areas */
 label[data-baseweb="radio"] > div,
 label[data-baseweb="checkbox"] > div { border-radius: 10px; padding: .15rem .35rem; }
 
-/* Links */
+/* Links & code */
 a { color: var(--brand); }
-a:hover { color: #1e40af; }
-
-/* Code blocks */
+a:hover { color: color-mix(in oklab, var(--brand) 75%, #000); }
 code, pre { background: color-mix(in oklab, var(--text-900) 10%, transparent); border-radius: 8px; padding: 2px 6px; }
 
 /* ---------- Scrollbars ---------- */
@@ -273,7 +281,7 @@ code, pre { background: color-mix(in oklab, var(--text-900) 10%, transparent); b
   border-radius: 10px;
 }
 
-/* ---------- Your custom legend & footer helpers ---------- */
+/* ---------- Custom legend & footer helpers ---------- */
 .legend-card {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -285,17 +293,37 @@ code, pre { background: color-mix(in oklab, var(--text-900) 10%, transparent); b
 .legend-swatch { width:12px; height:12px; border-radius:2px; flex:0 0 auto; box-shadow: 0 0 0 1px color-mix(in oklab, var(--text-900) 15%, transparent) inset; }
 .legend-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color: var(--text-700); }
 
-.dev-footer-wrap .dev-footer,
-.dev-wrap .dev-card {
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-m);
+.dev-footer-wrap .dev-footer{
+  margin: 18px 0 0 0;
+  padding: 14px 16px;
   background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-m);
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px;
 }
+.dev-footer .left{ display:grid; grid-template-columns: 56px 1fr; gap:12px; align-items:center; }
+.dev-footer .avatar{ width:56px;height:56px;display:grid;place-items:center;font-size:26px;background: var(--panel-2);
+  border-radius:12px;border:1px solid var(--line);}
+.dev-footer .name{ font-weight:700;font-size:16px;color:var(--text-900); }
+.dev-footer .role{ margin-top:2px;color:var(--text-500);font-size:12px; }
+.dev-footer .email-row{ margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap; }
+.dev-footer .label{ font-size:11px;color:var(--text-500);background: var(--panel-2);padding:3px 8px;border-radius:999px; }
+.dev-footer .email{ font-size:13px;color:var(--brand);text-decoration:none; }
+.dev-footer .email:hover{ text-decoration:underline; }
+.dev-footer .copy{ font-size:12px;padding:6px 10px;border-radius:8px;
+  border:1px solid color-mix(in oklab,var(--brand) 55%,transparent);
+  background: color-mix(in oklab,var(--brand) 12%, transparent);
+  color: var(--text-900); cursor:pointer; }
+.dev-footer .copy:hover{ background: color-mix(in oklab,var(--brand) 18%, transparent); }
 
-/* ---------- Mobile tweaks ---------- */
-@media (max-width: 720px) {
-  .block-container { padding: 1rem 1rem 1.5rem; }
-  h1 { font-size: 1.75rem; }
-  .js-plotly-plot, .plot-container { padding: 6px; }
+.dev-footer .right .links{ display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end; }
+.pill{ display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-900);text-decoration:none;
+  background: var(--panel-2); padding:6px 10px;border-radius:999px;border:1px solid var(--line);white-space:nowrap; }
+.pill:hover{ border-color: color-mix(in oklab,var(--text-900) 25%, transparent); }
+.pill .dot{ width:8px;height:8px;border-radius:999px;background: var(--brand); box-shadow:0 0 0 2px color-mix(in oklab,var(--brand) 25%, transparent); margin-right:2px;}
+
+@media (max-width: 800px) {
+  .dev-footer { grid-template-columns: 1fr; }
+  .dev-footer .right .links{ justify-content:flex-start; }
 }
