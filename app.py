@@ -6,6 +6,15 @@ import re
 import gspread
 from google.oauth2.service_account import Credentials
 from dateutil import parser as dtparser
+from pathlib import Path
+import streamlit as st
+
+def inject_css(path: str = "theme.css"):
+    css_path = Path(path)
+    if css_path.exists():
+        st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
+    else:
+        st.warning(f"CSS file not found: {path}")
 
 
 
@@ -31,6 +40,8 @@ def uniquify_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 st.set_page_config(layout="wide")
+inject_css("theme.css")
+
 # ======================
 # 🌟 Custom App Title
 # ======================
