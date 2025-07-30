@@ -1,0 +1,19 @@
+# Ignore Python cache and temp files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore environment folders
+venv/
+.env/
+
+# Ignore local configs
+*.log
+
+# Ignore service account JSON (your secrets)
+*.json
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
