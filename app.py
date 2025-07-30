@@ -421,7 +421,7 @@ if selected_designer == "All":
         if month_periods.empty:
             st.info("No valid Assigned Dates found to build the month selector.")
         else:
-            # Hide any future month (e.g., accidental 2026 data)
+            # Hide any future month (e.g., accidental future data)
             current_month = pd.Period(pd.Timestamp.today(), freq="M")
             month_periods = month_periods[month_periods <= current_month]
 
@@ -453,23 +453,25 @@ if selected_designer == "All":
                     "newsletter": 8, "logo": 14, "dp": 1, "blogs": 3, "card": 8,
                     "reel graphics": 3, "sm post": 3
                 }
-                # robust scoring that matches substrings (e.g., "SM post – static")
+                # robust matching that uses substrings (e.g., "SM post – static")
                 keys_sorted = sorted(points_map.keys(), key=len, reverse=True)
-                def score_for_type(v: str) -> int:
-                    s = (str(v) if pd.notna(v) else "").strip().lower()
+
+                def _type_key(val: str) -> str:
+                    s = (str(val) if pd.notna(val) else "").strip().lower()
                     if not s:
-                        return 1
+                        return "other"
                     for k in keys_sorted:
                         if k in s:
-                            return points_map[k]
-                    return 1
+                            return k
+                    return "other"
 
-                # Compute points and helper-normalized content type
+                # Normalize type and compute points-per-task & row points (1 row = 1 task)
                 month_scope_df = month_scope_df.copy()
-                month_scope_df["Content Type (norm)"] = month_scope_df.get("Content Type", "").astype(str).str.strip().str.lower()
-                month_scope_df["Points"] = month_scope_df["Content Type"].map(score_for_type)
+                month_scope_df["TypeKey"] = month_scope_df.get("Content Type", "").apply(_type_key)
+                month_scope_df["PtsPerTask"] = month_scope_df["TypeKey"].map(points_map).fillna(1).astype(int)
+                month_scope_df["Points"] = month_scope_df["PtsPerTask"]
 
-                # 4) Leaderboard (sum of points per designer)
+                # 4) Leaderboard (sum of points per designer) — used for medals & order
                 if "Designer Name" not in month_scope_df.columns:
                     st.info("No 'Designer Name' column found.")
                 else:
@@ -490,16 +492,93 @@ if selected_designer == "All":
                             medal = medals[i] if i < len(medals) else "🏅"
                             st.markdown(f"{medal} **{row['Designer Name']}** — **{int(row['Points'])} pts**")
 
-                        # Bar chart (all employees)
+                        # --- Aggregation for stacked vertical bars (designer x type) ---
+                        viz_df = month_scope_df.copy()
+                        agg = (
+                            viz_df
+                            .groupby(["Designer Name", "TypeKey", "PtsPerTask"], dropna=False)
+                            .agg(Tasks=("TypeKey", "count"),
+                                 Points=("Points", "sum"))
+                            .reset_index()
+                        )
+
+                        # Order designers by total points (desc)
+                        designer_totals = agg.groupby("Designer Name")["Points"].sum().sort_values(ascending=False)
+                        designer_order = designer_totals.index.tolist()
+                        agg["Designer Name"] = pd.Categorical(agg["Designer Name"], categories=designer_order, ordered=True)
+
+                        # Legend labels like "sm post (3)"
+                        def _label_with_points(row):
+                            tk = row["TypeKey"] if row["TypeKey"] else "other"
+                            pts = int(row["PtsPerTask"])
+                            return f"{tk} ({pts})"
+
+                        agg["TypeLabel"] = agg.apply(_label_with_points, axis=1)
+
+                        # Sort legend entries by total points across all designers (desc)
+                        type_totals = agg.groupby("TypeLabel")["Points"].sum().sort_values(ascending=False)
+                        type_order = type_totals.index.tolist()
+
+                        # --- Build stacked vertical bar chart ---
                         fig_emp = px.bar(
-                            emp_points,
+                            agg,
                             x="Designer Name",
                             y="Points",
+                            color="TypeLabel",
+                            category_orders={
+                                "Designer Name": designer_order,
+                                "TypeLabel": type_order,
+                            },
+                            barmode="stack",
                             text="Points",
-                            color="Points",
-                            color_continuous_scale="Blues"
                         )
-                        fig_emp.update_layout(height=380, margin=dict(l=10, r=10, t=20, b=20))
+
+                        # Rich hover: Designer → Type → Tasks → Pts/task → Subtotal → Designer total
+                        designer_total_map = designer_totals.to_dict()
+                        agg["_DesignerTotal"] = agg["Designer Name"].map(designer_total_map)
+                        fig_emp.update_traces(
+                            customdata=list(zip(agg["Tasks"], agg["PtsPerTask"], agg["_DesignerTotal"])),
+                            hovertemplate=(
+                                "<b>%{x}</b><br>"
+                                "%{trace.name}<br>"             # e.g., "sm post (3)"
+                                "Tasks: %{customdata[0]}<br>"
+                                "Pts per task: %{customdata[1]}<br>"
+                                "Subtotal points: %{y}<br>"
+                                "Designer total: %{customdata[2]}"
+                                "<extra></extra>"
+                            ),
+                            textposition="outside",
+                            cliponaxis=False,
+                        )
+
+                        # -------- Legend OUTSIDE on the LEFT (clean, non-overlapping) --------
+                        # Compute a sensible left margin based on legend size
+                        n_types = max(1, len(type_order))
+                        max_label_len = max((len(str(lbl)) for lbl in type_order), default=10)
+                        # Heuristic for legend width; adjust if needed
+                        legend_width_px = min(340, max(200, 9 * min(max_label_len, 24)))
+                        left_margin = legend_width_px + 50  # space for legend + cushion
+
+                        fig_emp.update_layout(
+                            height=max(380, 26 * max(1, len(designer_order))),
+                            margin=dict(l=left_margin, r=20, t=30, b=60),
+                            legend=dict(
+                                title="Type (points)",
+                                orientation="v",
+                                yanchor="top", y=1.0,
+                                xanchor="left", x=-0.02,  # just outside the plotting area on the left
+                                bgcolor="rgba(255,255,255,0.9)",
+                                bordercolor="rgba(0,0,0,0.15)",
+                                borderwidth=1,
+                                font=dict(size=12),
+                                tracegroupgap=6,
+                                itemclick="toggleothers",
+                                itemdoubleclick="toggle",
+                            ),
+                            xaxis_title="",
+                            yaxis_title="Points",
+                        )
+
                         st.plotly_chart(fig_emp, use_container_width=True)
 
                         # 5) Insights (line bullets)
@@ -513,16 +592,16 @@ if selected_designer == "All":
 
                         # Overall: most common category by count (within completed scope)
                         ct_counts = (
-                            month_scope_df.groupby("Content Type")  # use original label for readability
+                            month_scope_df.groupby("TypeKey")
                             .size()
                             .sort_values(ascending=False)
                         )
                         if not ct_counts.empty:
                             lines.append(f"- **Most common task type**: {ct_counts.index[0]} (**{int(ct_counts.iloc[0])}** tasks).")
 
-                        # Overall: highest-scoring category (sum of points by Content Type)
+                        # Overall: highest-scoring category (sum of points by type)
                         ct_points = (
-                            month_scope_df.groupby("Content Type")["Points"]
+                            month_scope_df.groupby("TypeKey")["Points"]
                             .sum()
                             .sort_values(ascending=False)
                         )
@@ -531,7 +610,7 @@ if selected_designer == "All":
 
                         # Per-designer: their most-done category (by count), show a few lines
                         per_designer_ct = (
-                            month_scope_df.groupby(["Designer Name", "Content Type"])
+                            month_scope_df.groupby(["Designer Name", "TypeKey"])
                             .size()
                             .reset_index(name="Count")
                         )
@@ -543,15 +622,12 @@ if selected_designer == "All":
                             sub = per_designer_ct[per_designer_ct["Designer Name"] == name]
                             if sub.empty:
                                 continue
-                            # pick the content type with maximum Count
                             idx = sub["Count"].idxmax()
-                            best_ct = sub.loc[idx, "Content Type"]
+                            best_ct = sub.loc[idx, "TypeKey"]
                             best_ct_n = int(sub.loc[idx, "Count"])
                             total_pts = int(emp_points.loc[emp_points["Designer Name"] == name, "Points"].iloc[0])
-                            # Produce a fun, single-line sentence
                             lines.append(f"- **{name}** did the most **{best_ct}** (**{best_ct_n}** tasks; **{total_pts} pts**).")
 
-                        # Render all lines
                         for ln in lines:
                             st.markdown(ln)
 else:
