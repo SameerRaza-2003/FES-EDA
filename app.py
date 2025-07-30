@@ -524,6 +524,7 @@ if selected_designer == "All":
                         color_map = {lbl: palette[i % len(palette)] for i, lbl in enumerate(type_order)}
 
                         # --- Build stacked vertical bar chart (disable built-in legend) ---
+                        import plotly.express as px  # ensure px is in scope in this block
                         fig_emp = px.bar(
                             agg,
                             x="Designer Name",
@@ -557,34 +558,51 @@ if selected_designer == "All":
                             showlegend=False,  # we'll render our own legend in the right column
                         )
 
+                        # Chart height (used for legend container too)
+                        chart_height = max(380, 26 * max(1, len(designer_order)))
+
                         fig_emp.update_layout(
-                            height=max(380, 26 * max(1, len(designer_order))),
+                            height=chart_height,
                             margin=dict(l=10, r=10, t=30, b=60),
                             xaxis_title="",
                             yaxis_title="Points",
                             showlegend=False,
                         )
 
-                        # --- Two-column layout: chart (left) + custom legend (right) ---
-                        c_chart, c_legend = st.columns([0.72, 0.28])  # adjust ratios if needed
+                        # --- Two-column layout: chart (left) + custom legend (right, scrollable) ---
+                        c_chart, c_legend = st.columns([0.74, 0.26])  # adjust ratios if needed
 
                         with c_chart:
                             st.plotly_chart(fig_emp, use_container_width=True)
 
                         with c_legend:
+                            # Scrollable legend aligned to chart height
+                            legend_inner_height = chart_height - 44  # leave room for header/padding
+                            if legend_inner_height < 220:
+                                legend_inner_height = 220  # minimum sensible height
+
                             st.markdown("**Legend — Type (points)**")
-                            # Build HTML legend with colored squares & labels
-                            legend_html = "<div style='line-height:1.6;'>"
+                            legend_html = f"""
+                            <div style="
+                                height:{legend_inner_height}px;
+                                overflow-y:auto;
+                                border:1px solid rgba(0,0,0,0.08);
+                                border-radius:10px;
+                                padding:8px 10px;
+                                background:rgba(255,255,255,0.9);
+                            ">
+                                <div style='display:flex;flex-direction:column;gap:6px;'>
+                            """
                             for lbl in type_order:
                                 color = color_map.get(lbl, "#888")
                                 legend_html += (
-                                    f"<div style='display:flex;align-items:center;margin-bottom:6px;'>"
+                                    "<div style='display:flex;align-items:center;'>"
                                     f"<span style='display:inline-block;width:12px;height:12px;"
-                                    f"background:{color};border-radius:2px;margin-right:8px;'></span>"
-                                    f"<span>{lbl}</span>"
-                                    f"</div>"
+                                    f"background:{color};border-radius:2px;margin-right:8px;flex:0 0 auto;'></span>"
+                                    f"<span style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{lbl}</span>"
+                                    "</div>"
                                 )
-                            legend_html += "</div>"
+                            legend_html += "</div></div>"
                             st.markdown(legend_html, unsafe_allow_html=True)
                             st.caption("Hover a bar to see tasks × points and subtotals.")
 
