@@ -984,10 +984,11 @@ from streamlit.components.v1 import html as st_html
 DEV_NAME     = "Sameer Raza Malik"
 DEV_EMAIL    = "sameer.raza@live.com"
 DEV_LINKEDIN = "https://www.linkedin.com/in/sameer-raza-malik-586829361/"
-# Optionally add more links here:
+DEV_GITHUB   = "https://github.com/SameerRaza-2003"  # <-- added back
+
 DEV_LINKS = {
     "LinkedIn": DEV_LINKEDIN,
-    # "GitHub": "https://github.com/your-handle",
+    "GitHub": DEV_GITHUB,  # <-- shown as a pill with an octopus icon
     # "Website": "https://your-site.com",
 }
 
@@ -996,26 +997,21 @@ def render_dev_footer(
     email: str,
     links: dict[str, str],
     *,
-    sticky: bool = False,   # set True to keep it always visible
+    sticky: bool = False,
     height: int = 140
 ) -> None:
     position = "fixed" if sticky else "relative"
     bottom_val = "0" if sticky else "auto"
     box_shadow = "0 -8px 20px rgba(0,0,0,0.06)" if sticky else "0 8px 20px rgba(0,0,0,0.06)"
 
-    # Build link pills
     link_items = ""
     for label, url in links.items():
         if not url:
             continue
-        # choose an emoji based on label (simple & lightweight)
         icon = "🔗"
-        if "link" in label.lower():
-            icon = "🔗"
-        if "github" in label.lower():
-            icon = "🐙"
-        if "web" in label.lower() or "site" in label.lower():
-            icon = "🌐"
+        if "github" in label.lower(): icon = "🐙"
+        elif "link" in label.lower(): icon = "🔗"
+        elif "web" in label.lower() or "site" in label.lower(): icon = "🌐"
         link_items += f"""
             <a class="pill" href="{url}" target="_blank" rel="noopener noreferrer" title="{label}">
                 <span class="dot"></span>{icon}&nbsp;{label}
@@ -1055,9 +1051,6 @@ def render_dev_footer(
         background: linear-gradient(180deg, #f7faff 0%, #eef4ff 50%, #e9f7ff 100%);
         border-top: 1px solid rgba(0,0,0,0.06);
         box-shadow: {box_shadow};
-      }}
-      /* content container */
-      .dev-footer {{
         display: grid;
         grid-template-columns: 1fr auto;
         align-items: center;
@@ -1077,48 +1070,33 @@ def render_dev_footer(
         border-radius: 12px;
         border: 1px solid rgba(0,0,0,0.06);
       }}
-      .name {{
-        font-weight: 700; font-size: 16px; color: #0f172a;
-      }}
-      .role {{
-        margin-top: 2px; color: #475569; font-size: 12px;
-      }}
+      .name {{ font-weight: 700; font-size: 16px; color: #0f172a; }}
+      .role {{ margin-top: 2px; color: #475569; font-size: 12px; }}
       .email-row {{
         margin-top: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
       }}
       .label {{
         font-size: 11px; color: #64748b; background: #f1f5f9; padding: 3px 8px; border-radius: 999px;
       }}
-      .email {{
-        font-size: 13px; color: #0ea5e9; text-decoration: none;
-      }}
+      .email {{ font-size: 13px; color: #0ea5e9; text-decoration: none; }}
       .email:hover {{ text-decoration: underline; }}
-
       .copy {{
         font-size: 12px; padding: 6px 10px; border-radius: 8px;
-        border: 1px solid rgba(14,165,233,0.5); background: #e0f2fe; color: #0369a1;
-        cursor: pointer;
+        border: 1px solid rgba(14,165,233,0.5); background: #e0f2fe; color: #0369a1; cursor: pointer;
       }}
       .copy:hover {{ background: #bae6fd; }}
-
-      .right .links {{
-        display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
-      }}
+      .right .links {{ display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }}
       .pill {{
         display: inline-flex; align-items: center; gap: 6px;
         font-size: 12px; color: #0b1324; text-decoration: none;
         background: #ffffff; padding: 6px 10px; border-radius: 999px;
-        border: 1px solid rgba(0,0,0,0.08);
-        white-space: nowrap;
+        border: 1px solid rgba(0,0,0,0.08); white-space: nowrap;
       }}
       .pill:hover {{ border-color: rgba(0,0,0,0.2); }}
       .pill .dot {{
         width: 8px; height: 8px; border-radius: 999px; background: #60a5fa;
-        box-shadow: 0 0 0 2px rgba(96,165,250,0.25);
-        margin-right: 2px;
+        box-shadow: 0 0 0 2px rgba(96,165,250,0.25); margin-right: 2px;
       }}
-
-      /* Responsive */
       @media (max-width: 800px) {{
         .dev-footer {{ grid-template-columns: 1fr; }}
         .right .links {{ justify-content: flex-start; }}
@@ -1140,14 +1118,12 @@ def render_dev_footer(
       function setCopied() {{
         const btn = document.querySelector('.copy');
         if (!btn) return;
-        const old = btn.textContent;
         btn.textContent = "Copied!";
         setTimeout(() => btn.textContent = "Copy", 1200);
       }}
     </script>
     """
-    # If sticky, give the iframe enough height to avoid covering content
     st_html(html_code, height=height)
 
-# 👉 Render it (place this near the end of your app)
+# Render near the end of your app
 render_dev_footer(DEV_NAME, DEV_EMAIL, DEV_LINKS, sticky=False, height=150)
