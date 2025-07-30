@@ -1,46 +1,41 @@
-/* =========================================
-   FES Pulse — Unified Theme (Auto Light/Dark)
-   - Light is default
-   - Dark is applied via prefers-color-scheme *or*
-     an explicit html[data-mode="dark"] attribute
-   ========================================= */
+/* ==========================================================
+   FES Pulse — Unified Theme (Auto Light/Dark) — v2
+   Fixes:
+   - Dark select boxes/backgrounds (no more black bar)
+   - Cohesive top hero / no awkward blank space
+   - Unified section "card" wrapper
+   ========================================================== */
 
-/* ---------- LIGHT default variables ---------- */
+/* ---------- LIGHT defaults ---------- */
 :root{
-  /* Brand */
   --brand:   #2563eb;
   --brand-2: #0ea5e9;
   --brand-3: #a78bfa;
 
-  /* Text */
   --text-900: #0f172a;
   --text-700: #334155;
   --text-500: #64748b;
 
-  /* Surfaces */
-  --bg:      #f7faff;   /* page */
-  --panel:   #ffffff;   /* cards */
-  --panel-2: #f8fafc;   /* subtle filled areas */
+  --bg:      #f7faff;    /* page */
+  --panel:   #ffffff;    /* cards */
+  --panel-2: #f8fafc;    /* subtle filled areas */
   --line:    rgba(15, 23, 42, .08);
 
-  /* Effects */
   --radius:   14px;
   --shadow-s: 0 4px 10px rgba(15, 23, 42, .06);
   --shadow-m: 0 10px 24px rgba(15, 23, 42, .08);
 
-  /* States */
   --success: #16a34a;
   --danger:  #ef4444;
   --warn:    #f59e0b;
 
-  /* Plotly */
-  --plot-bg: #ffffff;
+  --plot-bg: #ffffff; /* Plotly container */
 }
 
-/* ---------- DARK overrides via system preference ---------- */
+/* ---------- DARK overrides (system) ---------- */
 @media (prefers-color-scheme: dark) {
   :root{
-    --brand:   #3b82f6;      /* slightly brighter in dark */
+    --brand:   #3b82f6;
     --brand-2: #22d3ee;
 
     --text-900: #e5e7eb;
@@ -59,9 +54,7 @@
   }
 }
 
-/* ---------- Manual override (optional)
-   Add data-mode='dark' or 'light' to <html> to force mode.
------------------------------------------ */
+/* ---------- Manual override (optional) ---------- */
 html[data-mode="dark"] :root{
   --brand:   #3b82f6;
   --brand-2: #22d3ee;
@@ -80,38 +73,65 @@ html[data-mode="dark"] :root{
 
   --plot-bg: #0f172a;
 }
-html[data-mode="light"] :root{
-  /* no changes; stays on light set above */
-}
+html[data-mode="light"] :root {}
 
 /* ---------- Page & layout ---------- */
 html, body, .stApp {
   background:
-    radial-gradient(900px 480px at 10% -10%, color-mix(in oklab, var(--brand) 18%, transparent) 0%, transparent 60%),
-    radial-gradient(900px 480px at 90% -10%, color-mix(in oklab, var(--brand-2) 16%, transparent) 0%, transparent 60%),
+    radial-gradient(900px 480px at 12% -12%, color-mix(in oklab, var(--brand) 12%, transparent) 0%, transparent 62%),
+    radial-gradient(900px 480px at 88% -12%, color-mix(in oklab, var(--brand-2) 10%, transparent) 0%, transparent 62%),
     var(--bg);
   color: var(--text-700);
 }
 
 .block-container {
   max-width: 1180px;
-  padding: 1.25rem 2rem 2rem;
-  margin: 0 auto; /* center column */
+  padding: 0 2rem 2rem;
+  margin: 0 auto;
 }
 
 div[data-testid="stVerticalBlock"] { row-gap: 1.1rem; }
 div[data-testid="stHorizontalBlock"] { column-gap: 1.1rem; }
 
+/* ---------- HERO (ties the title to the page; removes “blank” feel) ---------- */
+.app-hero {
+  margin: 0 -2rem 16px;           /* stretch edge-to-edge inside block-container */
+  padding: 16px 2rem 12px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--brand) 10%, transparent), transparent 65%),
+    var(--panel);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 28px color-mix(in oklab, var(--text-900) 6%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  .app-hero {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--brand) 16%, transparent), transparent 65%),
+      var(--panel);
+  }
+}
+html[data-mode="dark"] .app-hero {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--brand) 16%, transparent), transparent 65%),
+    var(--panel);
+}
+
+/* Title block inside hero (theme-aware) */
+.fes-title { text-align:center; padding: 6px 0 2px; }
+.fes-title h1 { margin:0; font-size: 42px; font-weight: 800; color: var(--text-900); }
+.fes-title .fes { color: var(--text-900); }
+.fes-title .pulse { color: var(--brand); }
+.fes-title .tagline { margin-top: 6px; font-size:16px; color: var(--text-500); font-style: italic; }
+@media (max-width: 720px){ .fes-title h1 { font-size: 32px; } }
+
 /* ---------- Headings ---------- */
-h1, h2, h3 { color: var(--text-900); letter-spacing: .2px; }
-h1 { font-weight: 800; }
-h2 { font-weight: 700; margin-bottom: .25rem; }
+h2 { color: var(--text-900); font-weight: 700; margin: 0 0 .25rem; letter-spacing:.2px; }
 h2::after {
   content: ""; display: block; width: 48px; height: 4px;
   margin-top: 6px; border-radius: 999px;
   background: linear-gradient(90deg, var(--brand), var(--brand-2));
 }
-h3 { font-weight: 700; }
+h3 { color: var(--text-900); font-weight: 700; letter-spacing:.2px; }
 
 /* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"] {
@@ -119,16 +139,8 @@ section[data-testid="stSidebar"] {
   border-right: 1px solid var(--line);
 }
 
-/* ---------- Title (theme-aware) ---------- */
-.fes-title { text-align:center; padding: 8px 0 6px; margin-bottom: 12px; }
-.fes-title h1 { margin:0; font-size: 42px; font-weight: 800; color: var(--text-900); }
-.fes-title .fes { color: var(--text-900); }
-.fes-title .pulse { color: var(--brand); }
-.fes-title .tagline { margin-top: 6px; font-size:16px; color: var(--text-500); font-style: italic; }
-@media (max-width: 720px){ .fes-title h1 { font-size: 32px; } }
-
 /* ---------- Unified Section Cards ---------- */
-/* Use: st.markdown('<div class="section-anchor"></div>', unsafe_allow_html=True); then with st.container(): ... */
+/* Use: <div class="section-anchor"></div> then with st.container(): ... */
 .section-anchor + div[data-testid="stVerticalBlock"],
 .section-card {
   background: var(--panel);
@@ -138,7 +150,6 @@ section[data-testid="stSidebar"] {
   padding: 16px 18px 18px;
 }
 
-/* Section header inside card */
 .section-head {
   display:flex; align-items:center; gap:12px;
   padding-bottom:10px; margin-bottom:14px;
@@ -154,8 +165,6 @@ section[data-testid="stSidebar"] {
 .section-head .title { font-size: 18px; font-weight: 800; color: var(--text-900); line-height: 1.15; }
 .section-head .subtitle { font-size: 13px; color: var(--text-500); margin-top:2px; }
 
-.section-body-tight > *:not(:last-child) { margin-bottom: .6rem; }
-
 /* ---------- Components ---------- */
 [data-testid="stMetric"] {
   background: var(--panel);
@@ -166,6 +175,7 @@ section[data-testid="stSidebar"] {
 }
 [data-testid="stMetric"] [data-testid="stMetricValue"] { color: var(--brand); }
 
+/* Expanders */
 details {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -173,6 +183,7 @@ details {
   box-shadow: var(--shadow-s);
 }
 
+/* DataFrames / Tables */
 [data-testid="stDataFrame"] {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -205,7 +216,7 @@ details {
   border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
 }
 
-/* Plotly chart container (the figure itself uses template you set in Python) */
+/* Plotly container */
 .js-plotly-plot, .plot-container {
   background: var(--plot-bg);
   border: 1px solid var(--line);
@@ -222,7 +233,7 @@ details {
   background: var(--panel);
 }
 
-/* ---------- Controls ---------- */
+/* ---------- Controls (Buttons, Inputs, Selects) ---------- */
 .stButton > button,
 .stDownloadButton > button {
   border-radius: 999px !important;
@@ -243,27 +254,51 @@ details {
 .stButton > button:active,
 .stDownloadButton > button:active { transform: translateY(0); }
 
+/* Text inputs, textareas, date pickers */
 div[data-baseweb="input"],
 div[data-baseweb="textarea"],
-div[data-baseweb="select"],
 div[data-baseweb="datepicker"] {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px !important;
-  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent);
   color: var(--text-700);
 }
 div[data-baseweb="input"]:focus-within,
 div[data-baseweb="textarea"]:focus-within,
-div[data-baseweb="select"]:focus-within,
 div[data-baseweb="datepicker"]:focus-within {
   border-color: color-mix(in oklab, var(--brand) 55%, transparent);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 18%, transparent);
 }
 
+/* SELECT & MULTISELECT — dark fix (kills the black bar) */
+div[data-baseweb="select"] > div {
+  background: var(--panel-2) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 25%, transparent);
+}
+div[data-baseweb="select"] [role="combobox"],
+div[data-baseweb="select"] input,
+div[data-baseweb="select"] div,
+div[data-baseweb="select"] span {
+  color: var(--text-900) !important;
+}
+div[data-baseweb="select"] svg { fill: var(--text-700) !important; }
+ul[data-baseweb="menu"] {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-s);
+  border-radius: 10px;
+}
+ul[data-baseweb="menu"] li { color: var(--text-900); }
+ul[data-baseweb="menu"] li:hover { background: color-mix(in oklab, var(--brand) 12%, transparent); }
+
+/* Slider */
 div[data-baseweb="slider"] .rc-slider-track { background: var(--brand) !important; }
 div[data-baseweb="slider"] .rc-slider-handle { border-color: var(--brand) !important; }
 
+/* Radios / checkboxes */
 label[data-baseweb="radio"] > div,
 label[data-baseweb="checkbox"] > div { border-radius: 10px; padding: .15rem .35rem; }
 
@@ -272,16 +307,13 @@ a { color: var(--brand); }
 a:hover { color: color-mix(in oklab, var(--brand) 75%, #000); }
 code, pre { background: color-mix(in oklab, var(--text-900) 10%, transparent); border-radius: 8px; padding: 2px 6px; }
 
-/* ---------- Scrollbars ---------- */
+/* Scrollbars */
 * { scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--brand) 60%, transparent) color-mix(in oklab, var(--text-900) 6%, transparent); }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: color-mix(in oklab, var(--text-900) 6%, transparent); border-radius: 10px; }
-*::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--brand), var(--brand-2));
-  border-radius: 10px;
-}
+*::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--brand), var(--brand-2)); border-radius: 10px; }
 
-/* ---------- Custom legend & footer helpers ---------- */
+/* Custom legend & footer helpers */
 .legend-card {
   border: 1px solid var(--line);
   border-radius: 12px;
