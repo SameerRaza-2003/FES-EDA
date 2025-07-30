@@ -359,3 +359,97 @@ code, pre { background: color-mix(in oklab, var(--text-900) 10%, transparent); b
   .dev-footer { grid-template-columns: 1fr; }
   .dev-footer .right .links{ justify-content:flex-start; }
 }
+/* ==========================================================
+   PATCH — Legend (dark-mode readability) + Dev Card accent
+   ========================================================== */
+
+/* New shared accents */
+:root{
+  /* a mid accent that blends brand + brand-2 in both modes */
+  --dev-accent: color-mix(in oklab, var(--brand) 45%, var(--brand-2) 55%);
+  --legend-bg: color-mix(in oklab, var(--panel) 96%, transparent);
+  --legend-hover: color-mix(in oklab, var(--brand) 14%, transparent);
+}
+
+/* If you use manual dark override, keep values consistent */
+html[data-mode="dark"] :root{
+  --dev-accent: color-mix(in oklab, var(--brand) 45%, var(--brand-2) 55%);
+  --legend-bg: color-mix(in oklab, var(--panel) 96%, transparent);
+  --legend-hover: color-mix(in oklab, var(--brand) 18%, transparent);
+}
+
+/* ---------- Employee-of-the-Month legend (class-based) ---------- */
+/* These apply when you render the legend with .legend-card, .legend-item, etc. */
+.legend-card{
+  background: var(--legend-bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-s);
+  padding: 10px 12px;
+}
+.legend-item{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.legend-item:last-child{ margin-bottom:0; }
+.legend-swatch{
+  width:12px; height:12px; border-radius:2px; flex:0 0 auto;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--text-900) 18%, transparent) inset;
+}
+.legend-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color: var(--text-700); }
+
+/* Hover/Focus state to increase contrast when navigating with keyboard */
+.legend-item:hover .legend-label,
+.legend-item:focus-within .legend-label{ color: var(--text-900); }
+
+/* ---------- TEMP fix for your current inline-styled legend ---------- */
+/* Your app currently injects inline styles (white bg). This safely overrides them
+   in both themes until you switch to the class-based markup. */
+div[style*="overflow-y:auto"][style*="background:rgba(255,255,255,0.9)"]{
+  background: var(--legend-bg) !important;
+  border-color: var(--line) !important;
+  color: var(--text-700) !important;
+}
+div[style*="overflow-y:auto"][style*="background:rgba(255,255,255,0.9)"] span{
+  color: var(--text-700) !important;
+}
+div[style*="overflow-y:auto"][style*="background:rgba(255,255,255,0.9)"]::-webkit-scrollbar-thumb{
+  background: linear-gradient(180deg, var(--brand), var(--brand-2));
+}
+
+/* ---------- Developer card — blended accent for both modes ---------- */
+.dev-footer-wrap .dev-footer{
+  /* subtle top glow using the new blended accent */
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--dev-accent) 10%, transparent) 0%, transparent 38%),
+    var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-m);
+}
+
+.dev-footer .avatar{
+  background: var(--panel-2);
+  border: 1px solid color-mix(in oklab, var(--dev-accent) 40%, var(--line));
+  box-shadow: 0 4px 10px color-mix(in oklab, var(--dev-accent) 14%, transparent);
+}
+
+/* Accent the copy button slightly more while keeping neutrality in dark/light */
+.dev-footer .copy{
+  border: 1px solid color-mix(in oklab, var(--dev-accent) 55%, transparent);
+  background: color-mix(in oklab, var(--dev-accent) 12%, transparent);
+  color: var(--text-900);
+}
+.dev-footer .copy:hover{
+  background: color-mix(in oklab, var(--dev-accent) 18%, transparent);
+}
+
+/* Pills: improve contrast & hover ring in both themes */
+.pill{
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+.pill .dot{
+  background: var(--dev-accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--dev-accent) 25%, transparent);
+}
+.pill:hover{
+  border-color: color-mix(in oklab, var(--text-900) 25%, transparent);
+  box-shadow: 0 3px 12px color-mix(in oklab, var(--dev-accent) 16%, transparent);
+}
