@@ -40,7 +40,7 @@ def uniquify_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 st.set_page_config(layout="wide")
-
+inject_css("theme.css")
 # ======================
 # 🌟 Custom App Title
 # ======================
@@ -1011,7 +1011,21 @@ if table_cols:
     else:
         st.dataframe(remaining_df[table_cols], use_container_width=True)
 
+# ======================
+# 👨🏻‍💻 Developer Footer (pretty & interactive)
+# ======================
 from streamlit.components.v1 import html as st_html
+
+DEV_NAME     = "Sameer Raza Malik"
+DEV_EMAIL    = "sameer.raza@live.com"
+DEV_LINKEDIN = "https://www.linkedin.com/in/sameer-raza-malik-586829361/"
+DEV_GITHUB   = "https://github.com/SameerRaza-2003"  # <-- added back
+
+DEV_LINKS = {
+    "LinkedIn": DEV_LINKEDIN,
+    "GitHub": DEV_GITHUB,  # <-- shown as a pill with an octopus icon
+    # "Website": "https://your-site.com",
+}
 
 def render_dev_footer(
     name: str,
@@ -1021,174 +1035,131 @@ def render_dev_footer(
     sticky: bool = False,
     height: int = 140
 ) -> None:
-    wrap_class = "dev-footer-wrap is-sticky" if sticky else "dev-footer-wrap"
+    position = "fixed" if sticky else "relative"
+    bottom_val = "0" if sticky else "auto"
+    box_shadow = "0 -8px 20px rgba(0,0,0,0.06)" if sticky else "0 8px 20px rgba(0,0,0,0.06)"
 
     link_items = ""
     for label, url in links.items():
         if not url:
             continue
         icon = "🔗"
-        ll = label.lower()
-        if "github" in ll: icon = "🐙"
-        elif "web" in ll or "site" in ll: icon = "🌐"
-        elif "link" in ll: icon = "🔗"
+        if "github" in label.lower(): icon = "🐙"
+        elif "link" in label.lower(): icon = "🔗"
+        elif "web" in label.lower() or "site" in label.lower(): icon = "🌐"
         link_items += f"""
             <a class="pill" href="{url}" target="_blank" rel="noopener noreferrer" title="{label}">
-              <span class="dot"></span>{icon}&nbsp;{label}
+                <span class="dot"></span>{icon}&nbsp;{label}
             </a>
         """
 
     html_code = f"""
-<div class="{wrap_class}" role="contentinfo" aria-label="Developer footer">
-  <div class="dev-footer" data-theme-aware="true">
-    <div class="left">
-      <div class="avatar" aria-hidden="true">👨🏻‍💻</div>
-      <div class="meta">
-        <div class="name">{name}</div>
-        <div class="role">Developer</div>
-        <div class="email-row">
-          <span class="label">Email</span>
-          <a class="email" href="mailto:{email}">{email}</a>
-          <button class="copy" onclick="copyEmail()" title="Copy email">Copy</button>
+    <div class="dev-footer-wrap" role="contentinfo">
+      <div class="dev-footer">
+        <div class="left">
+          <div class="avatar" aria-hidden="true">👨🏻‍💻</div>
+          <div class="meta">
+            <div class="name">{name}</div>
+            <div class="role">Developer</div>
+            <div class="email-row">
+              <span class="label">Email</span>
+              <a class="email" href="mailto:{email}">{email}</a>
+              <button class="copy" onclick="copyEmail()" title="Copy email">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="right">
+          <div class="links">{link_items}</div>
         </div>
       </div>
     </div>
-    <div class="right">
-      <div class="links">{link_items}</div>
-    </div>
-  </div>
-</div>
 
-<style>
-  /* --- positioning wrapper --- */
-  .dev-footer-wrap {{
-    position: { 'fixed' if sticky else 'relative' };
-    left: 0; right: 0; bottom: { '0' if sticky else 'auto' };
-    z-index: 999;
-    padding: { '0' if sticky else '0' };
-  }}
+    <style>
+      .dev-footer-wrap {{
+        position: {position};
+        left: 0; right: 0; bottom: {bottom_val};
+        z-index: 999;
+      }}
+      .dev-footer {{
+        margin: 18px 0 0 0;
+        padding: 14px 16px;
+        background: linear-gradient(180deg, #f7faff 0%, #eef4ff 50%, #e9f7ff 100%);
+        border-top: 1px solid rgba(0,0,0,0.06);
+        box-shadow: {box_shadow};
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 14px;
+        border-radius:15px;
+      }}
+      .left {{
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 12px;
+        align-items: center;
+      }}
+      .avatar {{
+        width: 56px; height: 56px;
+        display: grid; place-items: center;
+        font-size: 26px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(0,0,0,0.06);
+      }}
+      .name {{ font-weight: 700; font-size: 16px; color: #0f172a; }}
+      .role {{ margin-top: 2px; color: #475569; font-size: 12px; }}
+      .email-row {{
+        margin-top: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      }}
+      .label {{
+        font-size: 11px; color: #64748b; background: #f1f5f9; padding: 3px 8px; border-radius: 999px;
+      }}
+      .email {{ font-size: 13px; color: #0ea5e9; text-decoration: none; }}
+      .email:hover {{ text-decoration: underline; }}
+      .copy {{
+        font-size: 12px; padding: 6px 10px; border-radius: 8px;
+        border: 1px solid rgba(14,165,233,0.5); background: #e0f2fe; color: #0369a1; cursor: pointer;
+      }}
+      .copy:hover {{ background: #bae6fd; }}
+      .right .links {{ display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }}
+      .pill {{
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; color: #0b1324; text-decoration: none;
+        background: #ffffff; padding: 6px 10px; border-radius: 999px;
+        border: 1px solid rgba(0,0,0,0.08); white-space: nowrap;
+      }}
+      .pill:hover {{ border-color: rgba(0,0,0,0.2); }}
+      .pill .dot {{
+        width: 8px; height: 8px; border-radius: 999px; background: #60a5fa;
+        box-shadow: 0 0 0 2px rgba(96,165,250,0.25); margin-right: 2px;
+      }}
+      @media (max-width: 800px) {{
+        .dev-footer {{ grid-template-columns: 1fr; }}
+        .right .links {{ justify-content: flex-start; }}
+      }}
+    </style>
 
-  /* --- theme-aware card --- */
-  .dev-footer-wrap .dev-footer {{
-    margin: 18px 0 0 0;
-    padding: 14px 16px;
-
-    /* Use tokens so light/dark both look right */
-    background:
-      linear-gradient(180deg, color-mix(in oklab, var(--brand) 8%, transparent), transparent 70%),
-      var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-m);
-
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 14px;
-  }}
-
-  /* Rounded top only when sticky at the bottom */
-  .dev-footer-wrap.is-sticky .dev-footer {{
-    border-radius: var(--radius) var(--radius) 0 0;
-    box-shadow: 0 -8px 20px color-mix(in oklab, var(--text-900) 12%, transparent);
-  }}
-
-  .dev-footer .left {{
-    display: grid;
-    grid-template-columns: 56px 1fr;
-    gap: 12px;
-    align-items: center;
-  }}
-
-  .dev-footer .avatar {{
-    width: 56px; height: 56px;
-    display: grid; place-items: center;
-    font-size: 26px;
-    background: var(--panel-2);
-    border-radius: 12px;
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow-s);
-    color: var(--text-900);
-  }}
-
-  .dev-footer .name {{ font-weight: 700; font-size: 16px; color: var(--text-900); }}
-  .dev-footer .role {{ margin-top: 2px; color: var(--text-500); font-size: 12px; }}
-
-  .dev-footer .email-row {{
-    margin-top: 6px;
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  }}
-  .dev-footer .label {{
-    font-size: 11px; color: var(--text-500);
-    background: var(--panel-2);
-    padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
-  }}
-  .dev-footer .email {{
-    font-size: 13px; color: var(--brand); text-decoration: none;
-  }}
-  .dev-footer .email:hover {{ text-decoration: underline; }}
-
-  .dev-footer .copy {{
-    font-size: 12px; padding: 6px 10px; border-radius: 8px;
-    border: 1px solid color-mix(in oklab, var(--brand) 55%, transparent);
-    background: color-mix(in oklab, var(--brand) 12%, transparent);
-    color: var(--text-900); cursor: pointer;
-    transition: filter .2s ease, transform .04s ease, box-shadow .2s ease;
-    box-shadow: var(--shadow-s);
-  }}
-  .dev-footer .copy:hover {{
-    filter: brightness(1.03);
-  }}
-
-  .dev-footer .right .links {{
-    display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
-  }}
-
-  /* Reuse your .pill baseline; only ensure theme tokens are used */
-  .dev-footer .pill {{
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; color: var(--text-900); text-decoration: none;
-    background: var(--panel-2); padding: 6px 10px; border-radius: 999px;
-    border: 1px solid var(--line); white-space: nowrap;
-  }}
-  .dev-footer .pill:hover {{ border-color: color-mix(in oklab, var(--text-900) 25%, transparent); }}
-  .dev-footer .pill .dot {{
-    width: 8px; height: 8px; border-radius: 999px; margin-right: 2px;
-    background: var(--brand);
-    box-shadow: 0 0 0 2px color-mix(in oklab, var(--brand) 25%, transparent);
-  }}
-
-  /* Mobile stack */
-  @media (max-width: 800px) {{
-    .dev-footer-wrap .dev-footer {{ grid-template-columns: 1fr; }}
-    .dev-footer-wrap .right .links {{ justify-content: flex-start; }}
-  }}
-
-  /* Respect reduced motion */
-  @media (prefers-reduced-motion: reduce) {{
-    .dev-footer .copy {{ transition: none; }}
-  }}
-</style>
-
-<script>
-  function copyEmail() {{
-    const email = "{email}";
-    if (navigator.clipboard && window.isSecureContext) {{
-      navigator.clipboard.writeText(email).then(() => setCopied());
-    }} else {{
-      const ta = document.createElement('textarea');
-      ta.value = email; document.body.appendChild(ta);
-      ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-      setCopied();
-    }}
-  }}
-  function setCopied() {{
-    const btn = document.querySelector('.dev-footer .copy');
-    if (!btn) return;
-    const original = btn.textContent;
-    btn.textContent = "Copied!";
-    setTimeout(() => btn.textContent = original, 1200);
-  }}
-</script>
-"""
+    <script>
+      function copyEmail() {{
+        const email = "{email}";
+        if (navigator.clipboard && window.isSecureContext) {{
+          navigator.clipboard.writeText(email).then(() => setCopied());
+        }} else {{
+          const ta = document.createElement('textarea');
+          ta.value = email; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          setCopied();
+        }}
+      }}
+      function setCopied() {{
+        const btn = document.querySelector('.copy');
+        if (!btn) return;
+        btn.textContent = "Copied!";
+        setTimeout(() => btn.textContent = "Copy", 1200);
+      }}
+    </script>
+    """
     st_html(html_code, height=height)
+
+# Render near the end of your app
+render_dev_footer(DEV_NAME, DEV_EMAIL, DEV_LINKS, sticky=False, height=150)
