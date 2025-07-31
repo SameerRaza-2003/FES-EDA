@@ -75,7 +75,7 @@ st.markdown(
 
 
 # ========= EDIT THESE TWO (or three) CONSTANTS =========
-JSON_PATH = None # on Streamlit Cloud we’ll use st.secrets instead of a file
+JSON_PATH = None#"fes-employee-eda-01c012142a64.json" # on Streamlit Cloud we’ll use st.secrets instead of a file
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1yaW7V7hSBqOBZYbqIUKsGrhB8pVtWWrzq7t5scq3JVI/edit?gid=0#gid=0"  # your Google Sheet link
 SHEET_GID = "0"        # optional: keep "0" or set to the gid of the tab you want
 SHEET_TITLE = None     # optional alternative to GID: e.g., "Data". If set, it takes priority over GID.
@@ -527,86 +527,64 @@ if selected_designer == "All":
                         st.markdown(f"{medal} **{row[person_col]}** — **{int(row['Points'])} pts**")
 
                     # --- Chart + legend ---
+                    # --- Group cleanly for chart ---
+                    import plotly.graph_objects as go
+
+                    # === Group the data for custom plotting ===
                     agg = (
                         month_scope_df
-                        .groupby([person_col, "TypeKey", "PtsPerTask"], dropna=False)
-                        .agg(Tasks=("TypeKey", "count"), Points=("Points", "sum"))
+                        .groupby([person_col, "TypeKey"], dropna=False)
+                        .agg(TaskCount=("TypeKey", "count"), TotalPoints=("Points", "sum"))
                         .reset_index()
                     )
 
-                    designer_totals = agg.groupby(person_col)["Points"].sum().sort_values(ascending=False)
+                    agg["TypeKey"] = agg["TypeKey"].fillna("other")
+
+                    # Order people by total score
+                    designer_totals = agg.groupby(person_col)["TotalPoints"].sum().sort_values(ascending=False)
                     designer_order = designer_totals.index.tolist()
                     agg[person_col] = pd.Categorical(agg[person_col], categories=designer_order, ordered=True)
+                    agg = agg.sort_values([person_col, "TypeKey"])
 
-                    def _label_with_points(row):
-                        tk = row["TypeKey"] if row["TypeKey"] else "other"
-                        pts = int(row["PtsPerTask"])
-                        return f"{tk} ({pts})"
+                    # Task type order and consistent color map
+                    type_order = sorted(agg["TypeKey"].unique().tolist())
+                    palette = px.colors.qualitative.Set2
+                    color_map = {task: palette[i % len(palette)] for i, task in enumerate(type_order)}
 
-                    agg["TypeLabel"] = agg.apply(_label_with_points, axis=1)
-                    type_totals = agg.groupby("TypeLabel")["Points"].sum().sort_values(ascending=False)
-                    type_order = type_totals.index.tolist()
-                    palette = px.colors.qualitative.D3
-                    color_map = {lbl: palette[i % len(palette)] for i, lbl in enumerate(type_order)}
-
-                    fig_emp = px.bar(
-                        agg,
-                        x=person_col,
-                        y="Points",
-                        color="TypeLabel",
-                        category_orders={person_col: designer_order, "TypeLabel": type_order},
-                        color_discrete_map=color_map,
-                        barmode="stack",
-                        text="Points",
-                    )
-
-                    designer_total_map = designer_totals.to_dict()
-                    agg["_DesignerTotal"] = agg[person_col].map(designer_total_map)
-                    fig_emp.update_traces(
-                        customdata=list(zip(agg["Tasks"], agg["PtsPerTask"], agg["_DesignerTotal"])),
-                        hovertemplate=(
-                            "<b>%{x}</b><br>%{trace.name}<br>"
-                            "Tasks: %{customdata[0]}<br>Pts per task: %{customdata[1]}<br>"
-                            "Subtotal points: %{y}<br>Total: %{customdata[2]}<extra></extra>"
-                        ),
-                        textposition="outside",
-                        cliponaxis=False,
-                        showlegend=False,
-                    )
-
-                    chart_height = max(380, 26 * max(1, len(designer_order)))
-                    fig_emp.update_layout(
-                        height=chart_height,
-                        margin=dict(l=10, r=10, t=30, b=60),
-                        xaxis_title="", yaxis_title="Points",
-                        showlegend=False,
-                    )
-
-                    c_chart, c_legend = st.columns([0.74, 0.26])
-                    with c_chart:
-                        st.plotly_chart(fig_emp, use_container_width=True)
-                    with c_legend:
-                        legend_inner_height = chart_height - 44
-                        legend_inner_height = max(legend_inner_height, 220)
-                        st.markdown("**Legend — Type (points)**")
-                        legend_html = f"""
-                        <div style="height:{legend_inner_height}px;overflow-y:auto;
-                                    border:1px solid rgba(0,0,0,0.08);border-radius:10px;
-                                    padding:8px 10px;background-color: var(--legend-bg, rgba(255,255,255,0.9));
-                                    color: var(--legend-fg, #000);">
-                            <div style='display:flex;flex-direction:column;gap:6px;'>
-                        """
-                        for lbl in type_order:
-                            color = color_map.get(lbl, "#888")
-                            legend_html += (
-                                "<div style='display:flex;align-items:center;'>"
-                                f"<span style='display:inline-block;width:12px;height:12px;"
-                                f"background:{color};border-radius:2px;margin-right:8px;flex:0 0 auto;'></span>"
-                                f"<span style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{lbl}</span>"
-                                "</div>"
+                    # Build bar traces: one trace per task type
+                    fig = go.Figure()
+                    for task_type in type_order:
+                        task_df = agg[agg["TypeKey"] == task_type]
+                        fig.add_trace(go.Bar(
+                            x=task_df[person_col],
+                            y=task_df["TotalPoints"],
+                            name=task_type,
+                            marker_color=color_map[task_type],
+                            customdata=task_df[["TaskCount", "TotalPoints"]],
+                            hovertemplate=(
+                                "<b>%{x}</b><br>"
+                                f"Task Type: {task_type}<br>"
+                                "Task Count: %{customdata[0]}<br>"
+                                "Points from this type: %{customdata[1]}<extra></extra>"
                             )
-                        legend_html += "</div></div>"
-                        st.markdown(legend_html, unsafe_allow_html=True)
+                        ))
+
+                    # Layout and style
+                    chart_height = max(420, 28 * len(designer_order))
+                    fig.update_layout(
+                        barmode="group",
+                        height=chart_height,
+                        margin=dict(l=10, r=10, t=40, b=60),
+                        xaxis_title="",
+                        yaxis_title="Total Points",
+                        legend_title="Task Type",
+                        xaxis={'categoryorder': 'array', 'categoryarray': designer_order},
+                    )
+
+                    # Show chart
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    
 
                     # --- Insights ---
                     st.markdown("**🔎 Monthly insights (completed only)**")
@@ -633,6 +611,31 @@ if selected_designer == "All":
                         lines.append(f"- **{name}** did the most **{best_ct}** (**{best_ct_n}** tasks; **{total_pts} pts**).")
                     for ln in lines:
                         st.markdown(ln)
+
+                    st.markdown("---")
+st.markdown("### 📋 Individual Task Breakdown")
+
+for name in top_people:
+    person_df = month_scope_df[month_scope_df[person_col] == name].copy()
+    if person_df.empty:
+        continue
+    breakdown = (
+        person_df.groupby("TypeKey")
+        .agg(
+            TaskCount=("TypeKey", "count"),
+            PtsPerTask=("PtsPerTask", "first"),
+            TotalPoints=("Points", "sum")
+        ).reset_index()
+    )
+
+    with st.expander(f"🔽 {name} — {len(person_df)} tasks"):
+        st.dataframe(breakdown.rename(columns={
+            "TypeKey": "Task Type",
+            "TaskCount": "Count",
+            "PtsPerTask": "Pts/Task",
+            "TotalPoints": "Points"
+        }), use_container_width=True)
+
 else:
     st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
 
