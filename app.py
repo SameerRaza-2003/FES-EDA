@@ -75,7 +75,7 @@ st.markdown(
 
 
 # ========= EDIT THESE TWO (or three) CONSTANTS =========
-JSON_PATH = None#"fes-employee-eda-01c012142a64.json" # on Streamlit Cloud we’ll use st.secrets instead of a file
+JSON_PATH = "fes-employee-eda-01c012142a64.json" # on Streamlit Cloud we’ll use st.secrets instead of a file
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1yaW7V7hSBqOBZYbqIUKsGrhB8pVtWWrzq7t5scq3JVI/edit?gid=0#gid=0"  # your Google Sheet link
 SHEET_GID = "0"        # optional: keep "0" or set to the gid of the tab you want
 SHEET_TITLE = None     # optional alternative to GID: e.g., "Data". If set, it takes priority over GID.
@@ -209,6 +209,7 @@ def _minmax_over_cols(df_in: pd.DataFrame, cols: list[str]) -> tuple[pd.Timestam
 # ---------- Data source: Google Sheet only (defensive) ----------
 try:
     with st.spinner("Loading live Google Sheet…"):
+        
         df = load_sheet_from_gdrive(JSON_PATH, SHEET_URL, sheet_gid=SHEET_GID, sheet_title=SHEET_TITLE)
         df = uniquify_columns(df)  # <-- make headers unique
 except Exception as e:
@@ -307,10 +308,17 @@ primary_date_from, primary_date_to = st.sidebar.date_input(
 
 # Apply Designer/Assigner filters first
 filtered = df.copy()
-if "Designer Name" in filtered.columns and selected_designer and selected_designer != "All":
-    filtered = filtered[filtered["Designer Name"] == selected_designer]
-if "Assigned By" in filtered.columns and selected_by and selected_by != "All":
-    filtered = filtered[filtered["Assigned By"] == selected_by]
+# 🔧 Fully sanitize blank/invalid designer and assigner names
+for col in ["Designer Name", "Assigned By"]:
+    if col in filtered.columns:
+        filtered[col] = (
+            filtered[col]
+            .astype(str)
+            .fillna("")
+            .str.strip()
+        )
+        # Remove blanks, 'nan', 'none', etc.
+        filtered = filtered[~filtered[col].str.lower().isin(["", "nan", "none"])]
 
 # Ensure Assigned Date is datetime (idempotent)
 if "Assigned Date" in filtered.columns:
@@ -436,208 +444,206 @@ st.progress(completion_pct / 100 if total_tasks else 0)
 # ======================
 # 🏆 Employee of the Month / Assigner of the Month (Completed-only + monthly insights)
 # ======================
-st.subheader("🏆 Monthly Recognition")
 
-if selected_designer == "All":
-    eom_df = filtered.copy()
-    status_col = "Status" if "Status" in eom_df.columns else ("Design Status" if "Design Status" in eom_df.columns else None)
-    if status_col is not None:
-        eom_df = eom_df[eom_df[status_col].astype(str).str.strip().str.lower() == "completed"]
-    else:
-        st.info("No status column found to restrict scoring to completed tasks.")
-        eom_df = eom_df.iloc[0:0]
+if selected_designer=="All":
+    with st.container():
+        st.subheader("🏆 Employee of the Month")
+        st.markdown("#### 📅 Monthly Recognition")
 
-    if eom_df.empty or "Assigned Date" not in eom_df.columns:
-        st.info("No completed tasks in the current filters/time window.")
-    else:
-        assigned_series = pd.to_datetime(eom_df["Assigned Date"], errors="coerce")
-        month_periods = assigned_series.dropna().dt.to_period("M")
-        current_month = pd.Period(pd.Timestamp.today(), freq="M")
-        month_periods = month_periods[month_periods <= current_month]
 
-        unique_months = sorted(month_periods.unique())
-        month_keys = [str(p) for p in unique_months]
-        month_labels = [p.to_timestamp().strftime("%B %Y") for p in unique_months]
-        key_by_label = dict(zip(month_labels, month_keys))
-
-        month_label_selected = st.selectbox("📅 Select month", ["All"] + month_labels, index=0)
-
-        # 👇 Add toggle for Designer vs Assigner
-        role_mode = st.radio("🔄 Select role to evaluate", ["Designer of the Month", "Assigner of the Month"], horizontal=True)
-
-        month_scope_df = eom_df.copy()
-        if month_label_selected != "All":
-            sel_key = key_by_label[month_label_selected]
-            month_scope_df = month_scope_df[
-                pd.to_datetime(month_scope_df["Assigned Date"], errors="coerce").dt.to_period("M").astype(str) == sel_key
-            ]
-
-        if month_scope_df.empty:
-            st.info("No completed tasks for the selected month.")
-        else:
-            # === Shared logic ===
-            points_map = {
-                "branding": 10, "video": 10, "reel": 10, "standee": 8,
-                "event cover": 4, "banners": 4, "carousel": 8, "paid ads": 7,
-                "newsletter": 8, "logo": 14, "dp": 1, "blogs": 3, "card": 8,
-                "reel graphics": 3, "sm post": 3
-            }
-            keys_sorted = sorted(points_map.keys(), key=len, reverse=True)
-
-            def _type_key(val: str) -> str:
-                s = (str(val) if pd.notna(val) else "").strip().lower()
-                if not s:
-                    return "other"
-                for k in keys_sorted:
-                    if k in s:
-                        return k
-                return "other"
-
-            month_scope_df = month_scope_df.copy()
-            month_scope_df["TypeKey"] = month_scope_df.get("Content Type", "").apply(_type_key)
-            month_scope_df["PtsPerTask"] = month_scope_df["TypeKey"].map(points_map).fillna(1).astype(int)
-            month_scope_df["Points"] = month_scope_df["PtsPerTask"]
-
-            if role_mode == "Designer of the Month":
-                person_col = "Designer Name"
-                heading = "🏆 Employee of the Month"
+        if selected_designer == "All":
+            eom_df = filtered.copy()
+            status_col = "Status" if "Status" in eom_df.columns else ("Design Status" if "Design Status" in eom_df.columns else None)
+            if status_col is not None:
+                eom_df = eom_df[eom_df[status_col].astype(str).str.strip().str.lower() == "completed"]
             else:
-                person_col = "Assigned By"  # <-- Adjust this column name if your data uses a different one
-                heading = "📬 Assigner of the Month"
+                st.info("No status column found to restrict scoring to completed tasks.")
+                eom_df = eom_df.iloc[0:0]
 
-            st.markdown(f"### {heading}")
-            if person_col not in month_scope_df.columns:
-                st.info(f"No '{person_col}' column found.")
+            if eom_df.empty or "Assigned Date" not in eom_df.columns:
+                st.info("No completed tasks in the current filters/time window.")
             else:
-                # -- rest of the logic stays same; just plug in `person_col` dynamically
-                emp_points = (
-                    month_scope_df.groupby(person_col)["Points"]
-                    .sum()
-                    .sort_values(ascending=False)
-                    .reset_index()
-                )
+                assigned_series = pd.to_datetime(eom_df["Assigned Date"], errors="coerce")
+                month_periods = assigned_series.dropna().dt.to_period("M")
+                current_month = pd.Period(pd.Timestamp.today(), freq="M")
+                month_periods = month_periods[month_periods <= current_month]
 
-                if emp_points.empty:
-                    st.info("No completed tasks to score.")
+                unique_months = sorted(month_periods.unique())
+                month_keys = [str(p) for p in unique_months]
+                month_labels = [p.to_timestamp().strftime("%B %Y") for p in unique_months]
+                key_by_label = dict(zip(month_labels, month_keys))
+
+                # 👉 Inside container layout
+                col1, col2 = st.columns([0.5, 0.5])
+                with col1:
+                    month_label_selected = st.selectbox("📅 Select month", ["All"] + month_labels, index=0)
+                with col2:
+                    role_mode = st.radio("🔄 Select role to evaluate", ["Designer of the Month", "Assigner of the Month"], horizontal=True)
+
+                month_scope_df = eom_df.copy()
+                if month_label_selected != "All":
+                    sel_key = key_by_label[month_label_selected]
+                    month_scope_df = month_scope_df[
+                        pd.to_datetime(month_scope_df["Assigned Date"], errors="coerce").dt.to_period("M").astype(str) == sel_key
+                    ]
+
+                if month_scope_df.empty:
+                    st.info("No completed tasks for the selected month.")
                 else:
-                    medals = ["🥇", "🥈", "🥉"]
-                    top3 = emp_points.head(3)
-                    for i, row in top3.iterrows():
-                        medal = medals[i] if i < len(medals) else "🏅"
-                        st.markdown(f"{medal} **{row[person_col]}** — **{int(row['Points'])} pts**")
+                    # === Shared logic ===
+                    points_map = {
+                        "branding": 10, "video": 10, "reel": 10, "standee": 8,
+                        "event cover": 4, "banners": 4, "carousel": 8, "paid ads": 7,
+                        "newsletter": 8, "logo": 14, "dp": 1, "blogs": 3, "card": 8,
+                        "reel graphics": 3, "sm post": 3
+                    }
+                    keys_sorted = sorted(points_map.keys(), key=len, reverse=True)
 
-                    # --- Chart + legend ---
-                    # --- Group cleanly for chart ---
-                    import plotly.graph_objects as go
+                    def _type_key(val: str) -> str:
+                        s = (str(val) if pd.notna(val) else "").strip().lower()
+                        if not s:
+                            return "other"
+                        for k in keys_sorted:
+                            if k in s:
+                                return k
+                        return "other"
 
-                    # === Group the data for custom plotting ===
-                    agg = (
-                        month_scope_df
-                        .groupby([person_col, "TypeKey"], dropna=False)
-                        .agg(TaskCount=("TypeKey", "count"), TotalPoints=("Points", "sum"))
-                        .reset_index()
-                    )
+                    month_scope_df = month_scope_df.copy()
+                    month_scope_df["TypeKey"] = month_scope_df.get("Content Type", "").apply(_type_key)
+                    month_scope_df["PtsPerTask"] = month_scope_df["TypeKey"].map(points_map).fillna(1).astype(int)
+                    month_scope_df["Points"] = month_scope_df["PtsPerTask"]
 
-                    agg["TypeKey"] = agg["TypeKey"].fillna("other")
+                    if role_mode == "Designer of the Month":
+                        person_col = "Designer Name"
+                        heading = "🏆 Employee of the Month"
+                    else:
+                        person_col = "Assigned By"
+                        heading = "📬 Assigner of the Month"
 
-                    # Order people by total score
-                    designer_totals = agg.groupby(person_col)["TotalPoints"].sum().sort_values(ascending=False)
-                    designer_order = designer_totals.index.tolist()
-                    agg[person_col] = pd.Categorical(agg[person_col], categories=designer_order, ordered=True)
-                    agg = agg.sort_values([person_col, "TypeKey"])
+                    st.markdown(f"### {heading}")
+                    if person_col not in month_scope_df.columns:
+                        st.info(f"No '{person_col}' column found.")
+                    else:
+                        emp_points = (
+                            month_scope_df.groupby(person_col)["Points"]
+                            .sum()
+                            .sort_values(ascending=False)
+                            .reset_index()
+                        )
 
-                    # Task type order and consistent color map
-                    type_order = sorted(agg["TypeKey"].unique().tolist())
-                    palette = px.colors.qualitative.Set2
-                    color_map = {task: palette[i % len(palette)] for i, task in enumerate(type_order)}
+                        if emp_points.empty:
+                            st.info("No completed tasks to score.")
+                        else:
+                            top3 = emp_points.head(3)
+                            # Full leaderboard (not just top 3)
+                            medals = ["🥇", "🥈", "🥉"]
+                            for i, row in emp_points.iterrows():
+                                medal_or_rank = medals[i] if i < len(medals) else f"#{i+1}"
+                                person_name = row[person_col]
+                                total_points = int(row["Points"])
+                                task_count = month_scope_df[month_scope_df[person_col] == person_name].shape[0]
+                                st.markdown(f"{medal_or_rank} **{person_name}** — **{total_points} pts** ({task_count} tasks)")
 
-                    # Build bar traces: one trace per task type
-                    fig = go.Figure()
-                    for task_type in type_order:
-                        task_df = agg[agg["TypeKey"] == task_type]
-                        fig.add_trace(go.Bar(
-                            x=task_df[person_col],
-                            y=task_df["TotalPoints"],
-                            name=task_type,
-                            marker_color=color_map[task_type],
-                            customdata=task_df[["TaskCount", "TotalPoints"]],
-                            hovertemplate=(
-                                "<b>%{x}</b><br>"
-                                f"Task Type: {task_type}<br>"
-                                "Task Count: %{customdata[0]}<br>"
-                                "Points from this type: %{customdata[1]}<extra></extra>"
+                            # --- Group data for stacked bar ---
+                            import plotly.graph_objects as go
+
+                            agg = (
+                                month_scope_df
+                                .groupby([person_col, "TypeKey"], dropna=False)
+                                .agg(TaskCount=("TypeKey", "count"), TotalPoints=("Points", "sum"))
+                                .reset_index()
                             )
-                        ))
+                            agg["TypeKey"] = agg["TypeKey"].fillna("other")
 
-                    # Layout and style
-                    chart_height = max(420, 28 * len(designer_order))
-                    fig.update_layout(
-                        barmode="group",
-                        height=chart_height,
-                        margin=dict(l=10, r=10, t=40, b=60),
-                        xaxis_title="",
-                        yaxis_title="Total Points",
-                        legend_title="Task Type",
-                        xaxis={'categoryorder': 'array', 'categoryarray': designer_order},
-                    )
+                            # Sort designer order
+                            designer_totals = agg.groupby(person_col)["TotalPoints"].sum().sort_values(ascending=False)
+                            designer_order = designer_totals.index.tolist()
+                            agg[person_col] = pd.Categorical(agg[person_col], categories=designer_order, ordered=True)
+                            agg = agg.sort_values([person_col, "TypeKey"])
 
-                    # Show chart
-                    st.plotly_chart(fig, use_container_width=True)
+                            # Color palette
+                            type_order = sorted(agg["TypeKey"].unique().tolist())
+                            palette = px.colors.qualitative.Set2
+                            color_map = {task: palette[i % len(palette)] for i, task in enumerate(type_order)}
 
-                    
+                            # Build stacked bar chart
+                            fig = go.Figure()
+                            for task_type in type_order:
+                                task_df = agg[agg["TypeKey"] == task_type]
+                                fig.add_trace(go.Bar(
+                                    x=task_df[person_col],
+                                    y=task_df["TotalPoints"],
+                                    name=task_type,
+                                    marker_color=color_map[task_type],
+                                    customdata=task_df[["TaskCount", "TotalPoints"]],
+                                    hovertemplate=(
+                                        "<b>%{x}</b><br>"
+                                        f"Task Type: {task_type}<br>"
+                                        "Task Count: %{customdata[0]}<br>"
+                                        "Points from this type: %{customdata[1]}<extra></extra>"
+                                    )
+                                ))
 
-                    # --- Insights ---
-                    st.markdown("**🔎 Monthly insights (completed only)**")
-                    lines = []
-                    top_name = top3.iloc[0][person_col]
-                    top_pts = int(top3.iloc[0]["Points"])
-                    lines.append(f"- **Top scorer**: {top_name} with **{top_pts} points**.")
-                    ct_counts = month_scope_df.groupby("TypeKey").size().sort_values(ascending=False)
-                    if not ct_counts.empty:
-                        lines.append(f"- **Most common task type**: {ct_counts.index[0]} (**{int(ct_counts.iloc[0])}** tasks).")
-                    ct_points = month_scope_df.groupby("TypeKey")["Points"].sum().sort_values(ascending=False)
-                    if not ct_points.empty:
-                        lines.append(f"- **Highest scoring category**: {ct_points.index[0]} (**{int(ct_points.iloc[0])}** pts).")
-                    per_ct = month_scope_df.groupby([person_col, "TypeKey"]).size().reset_index(name="Count")
-                    topN = min(5, len(emp_points))
-                    top_people = emp_points[person_col].head(topN).tolist()
-                    for name in top_people:
-                        sub = per_ct[per_ct[person_col] == name]
-                        if sub.empty: continue
-                        idx = sub["Count"].idxmax()
-                        best_ct = sub.loc[idx, "TypeKey"]
-                        best_ct_n = int(sub.loc[idx, "Count"])
-                        total_pts = int(emp_points.loc[emp_points[person_col] == name, "Points"].iloc[0])
-                        lines.append(f"- **{name}** did the most **{best_ct}** (**{best_ct_n}** tasks; **{total_pts} pts**).")
-                    for ln in lines:
-                        st.markdown(ln)
+                            chart_height = max(420, 28 * len(designer_order))
+                            fig.update_layout(
+                                barmode="stack",
+                                height=chart_height,
+                                margin=dict(l=10, r=10, t=40, b=60),
+                                xaxis_title="",
+                                yaxis_title="Total Points",
+                                legend_title="Task Type",
+                                xaxis={'categoryorder': 'array', 'categoryarray': designer_order},
+                            )
 
-                    st.markdown("---")
-st.markdown("### 📋 Individual Task Breakdown")
+                            st.plotly_chart(fig, use_container_width=True)
 
-for name in top_people:
-    person_df = month_scope_df[month_scope_df[person_col] == name].copy()
-    if person_df.empty:
-        continue
-    breakdown = (
-        person_df.groupby("TypeKey")
-        .agg(
-            TaskCount=("TypeKey", "count"),
-            PtsPerTask=("PtsPerTask", "first"),
-            TotalPoints=("Points", "sum")
-        ).reset_index()
-    )
 
-    with st.expander(f"🔽 {name} — {len(person_df)} tasks"):
-        st.dataframe(breakdown.rename(columns={
-            "TypeKey": "Task Type",
-            "TaskCount": "Count",
-            "PtsPerTask": "Pts/Task",
-            "TotalPoints": "Points"
-        }), use_container_width=True)
+                        # --- Insights ---
+                        st.markdown("**🔎 Monthly insights (completed only)**")
+                        lines = []
+                        top_name = top3.iloc[0][person_col]
+                        top_pts = int(top3.iloc[0]["Points"])
+                        lines.append(f"- **Top scorer**: {top_name} with **{top_pts} points**.")
+                        ct_counts = month_scope_df.groupby("TypeKey").size().sort_values(ascending=False)
+                        if not ct_counts.empty:
+                            lines.append(f"- **Most common task type**: {ct_counts.index[0]} (**{int(ct_counts.iloc[0])}** tasks).")
+                        ct_points = month_scope_df.groupby("TypeKey")["Points"].sum().sort_values(ascending=False)
+                        if not ct_points.empty:
+                            lines.append(f"- **Highest scoring category**: {ct_points.index[0]} (**{int(ct_points.iloc[0])}** pts).")
+                        per_ct = month_scope_df.groupby([person_col, "TypeKey"]).size().reset_index(name="Count")
+                        topN = min(5, len(emp_points))
 
-else:
-    st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
+                        top_people = emp_points[person_col].head(topN).tolist()
+
+                        for ln in lines:
+                            st.markdown(ln)
+
+                        st.markdown("---")
+    st.markdown("### 📋 Individual Task Breakdown")
+
+    for name in top_people:
+        person_df = month_scope_df[month_scope_df[person_col] == name].copy()
+        if person_df.empty:
+            continue
+        breakdown = (
+            person_df.groupby("TypeKey")
+            .agg(
+                TaskCount=("TypeKey", "count"),
+                PtsPerTask=("PtsPerTask", "first"),
+                TotalPoints=("Points", "sum")
+            ).reset_index()
+        )
+
+        with st.expander(f"🔽 {name} — {len(person_df)} tasks"):
+            st.dataframe(breakdown.rename(columns={
+                "TypeKey": "Task Type",
+                "TaskCount": "Count",
+                "PtsPerTask": "Pts/Task",
+                "TotalPoints": "Points"
+            }), use_container_width=True)
+
+    else:
+        st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
 
 
 
@@ -896,20 +902,59 @@ if "Content Type" in filtered.columns:
     fig3.update_layout(yaxis_title="", xaxis_title="Tasks", margin=dict(l=100))
     st.plotly_chart(fig3, use_container_width=True)
 
-# 📅 Weekday Assignment Distribution
-if "Assigned Date" in filtered.columns:
-    st.subheader("📅 Tasks by Weekday")
-    filtered["Weekday"] = filtered["Assigned Date"].dt.day_name()
-    weekday_counts = (
-        filtered["Weekday"]
-        .value_counts()
-        .reindex(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
-        .fillna(0)
-        .reset_index()
-    )
-    weekday_counts.columns = ["Weekday", "Count"]
-    fig4 = px.bar(weekday_counts, x="Weekday", y="Count", text="Count", color="Weekday", height=400)
-    st.plotly_chart(fig4, use_container_width=True)
+# 📅 Weekday Completion Distribution (Dynamic with Filters)
+# 📅 Tasks Completed by Weekday
+if "Completion Date" in df.columns:
+    st.subheader("📅 Tasks Completed by Weekday")
+
+    # 🔧 Ensure date is parsed correctly
+    df["Completion Date"] = pd.to_datetime(df["Completion Date"], errors="coerce")
+
+    # 🔍 Apply all filters
+    filtered_completed = df[
+        (df["Status"].str.strip().str.lower() == "completed") &
+        (df["Completion Date"].notna()) &
+        (df["Completion Date"] >= pd.to_datetime(primary_date_from)) &
+        (df["Completion Date"] <= pd.to_datetime(primary_date_to))
+    ]
+
+    if selected_designer != "All":
+        filtered_completed = filtered_completed[filtered_completed["Designer Name"] == selected_designer]
+    if selected_by != "All":
+        filtered_completed = filtered_completed[filtered_completed["Assigned By"] == selected_by]
+
+    if not filtered_completed.empty:
+        # ✅ Calculate weekday from Completion Date
+        filtered_completed = filtered_completed.copy()
+        filtered_completed["Weekday"] = filtered_completed["Completion Date"].dt.day_name()
+
+        # 📊 Count tasks completed per weekday
+        weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        weekday_counts = (
+            filtered_completed["Weekday"]
+            .value_counts()
+            .reindex(weekday_order)
+            .fillna(0)
+            .reset_index()
+        )
+        weekday_counts.columns = ["Weekday", "Completed Tasks"]
+
+        # 📈 Plot
+        fig4 = px.bar(
+            weekday_counts,
+            x="Weekday",
+            y="Completed Tasks",
+            text="Completed Tasks",
+            color="Weekday",
+            category_orders={"Weekday": weekday_order},
+            height=400
+        )
+        fig4.update_traces(textposition="outside")
+        fig4.update_layout(showlegend=False, yaxis_title="Tasks Completed")
+
+        st.plotly_chart(fig4, use_container_width=True)
+    else:
+        st.info("No completed tasks match the current filters.")
 
 # 📋 Task Tables (with per-table Content Type filters)
 table_cols = [c for c in ["Content Title", "Designer Name", "Assigned By", "Assigned Date", "Completion Date", "Design Status", "Content Type"] if c in filtered.columns]
