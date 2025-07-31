@@ -629,10 +629,12 @@ if selected_designer == "All":
                                 border:1px solid rgba(0,0,0,0.08);
                                 border-radius:10px;
                                 padding:8px 10px;
-                                background:rgba(255,255,255,0.9);
+                                background-color: var(--legend-bg, rgba(255,255,255,0.9));
+                                color: var(--legend-fg, #000);
                             ">
                                 <div style='display:flex;flex-direction:column;gap:6px;'>
                             """
+
                             for lbl in type_order:
                                 color = color_map.get(lbl, "#888")
                                 legend_html += (
