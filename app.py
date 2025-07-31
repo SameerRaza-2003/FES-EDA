@@ -434,16 +434,12 @@ st.markdown(f"### 🔄 Completion Progress: **{completion_pct}%**")
 st.progress(completion_pct / 100 if total_tasks else 0)
 
 # ======================
-# 🏆 Employee of the Month  (Completed-only + monthly insights)
+# 🏆 Employee of the Month / Assigner of the Month (Completed-only + monthly insights)
 # ======================
-st.subheader("🏆 Employee of the Month")
+st.subheader("🏆 Monthly Recognition")
 
-# Only show if ALL designers are selected (irrelevant when a single designer is chosen)
 if selected_designer == "All":
-    # Start from the currently filtered dataset
     eom_df = filtered.copy()
-
-    # 1) Restrict to COMPLETED tasks only (prefer normalized Status)
     status_col = "Status" if "Status" in eom_df.columns else ("Design Status" if "Design Status" in eom_df.columns else None)
     if status_col is not None:
         eom_df = eom_df[eom_df[status_col].astype(str).str.strip().str.lower() == "completed"]
@@ -451,252 +447,192 @@ if selected_designer == "All":
         st.info("No status column found to restrict scoring to completed tasks.")
         eom_df = eom_df.iloc[0:0]
 
-    # If no completed tasks, show friendly message and bail out early
     if eom_df.empty or "Assigned Date" not in eom_df.columns:
-        st.info("No completed tasks in the current filters/time window to compute Employee of the Month.")
+        st.info("No completed tasks in the current filters/time window.")
     else:
-        # 2) Build a clean month dropdown from ASSIGNED DATE, remove future months, dedupe, nice labels
         assigned_series = pd.to_datetime(eom_df["Assigned Date"], errors="coerce")
         month_periods = assigned_series.dropna().dt.to_period("M")
-        if month_periods.empty:
-            st.info("No valid Assigned Dates found to build the month selector.")
+        current_month = pd.Period(pd.Timestamp.today(), freq="M")
+        month_periods = month_periods[month_periods <= current_month]
+
+        unique_months = sorted(month_periods.unique())
+        month_keys = [str(p) for p in unique_months]
+        month_labels = [p.to_timestamp().strftime("%B %Y") for p in unique_months]
+        key_by_label = dict(zip(month_labels, month_keys))
+
+        month_label_selected = st.selectbox("📅 Select month", ["All"] + month_labels, index=0)
+
+        # 👇 Add toggle for Designer vs Assigner
+        role_mode = st.radio("🔄 Select role to evaluate", ["Designer of the Month", "Assigner of the Month"], horizontal=True)
+
+        month_scope_df = eom_df.copy()
+        if month_label_selected != "All":
+            sel_key = key_by_label[month_label_selected]
+            month_scope_df = month_scope_df[
+                pd.to_datetime(month_scope_df["Assigned Date"], errors="coerce").dt.to_period("M").astype(str) == sel_key
+            ]
+
+        if month_scope_df.empty:
+            st.info("No completed tasks for the selected month.")
         else:
-            # Hide any future month (e.g., accidental future data)
-            current_month = pd.Period(pd.Timestamp.today(), freq="M")
-            month_periods = month_periods[month_periods <= current_month]
+            # === Shared logic ===
+            points_map = {
+                "branding": 10, "video": 10, "reel": 10, "standee": 8,
+                "event cover": 4, "banners": 4, "carousel": 8, "paid ads": 7,
+                "newsletter": 8, "logo": 14, "dp": 1, "blogs": 3, "card": 8,
+                "reel graphics": 3, "sm post": 3
+            }
+            keys_sorted = sorted(points_map.keys(), key=len, reverse=True)
 
-            # Unique, sorted (ascending), then build readable labels
-            unique_months = sorted(month_periods.unique())
-            month_keys = [str(p) for p in unique_months]  # "YYYY-MM"
-            month_labels = [p.to_timestamp().strftime("%B %Y") for p in unique_months]
-            key_by_label = dict(zip(month_labels, month_keys))
-
-            # Final selectbox options
-            month_label_selected = st.selectbox("📅 Select month", ["All"] + month_labels, index=0)
-
-            # Apply month filter if not "All"
-            month_scope_df = eom_df.copy()
-            if month_label_selected != "All":
-                sel_key = key_by_label[month_label_selected]  # "YYYY-MM"
-                month_scope_df = month_scope_df[
-                    pd.to_datetime(month_scope_df["Assigned Date"], errors="coerce").dt.to_period("M").astype(str) == sel_key
-                ]
-
-            # If still empty after month filter
-            if month_scope_df.empty:
-                st.info("No completed tasks for the chosen month.")
-            else:
-                # 3) Points map (category → points); fallback 1 point for anything not listed
-                points_map = {
-                    "branding": 10, "video": 10, "reel": 10, "standee": 8,
-                    "event cover": 4, "banners": 4, "carousel": 8, "paid ads": 7,
-                    "newsletter": 8, "logo": 14, "dp": 1, "blogs": 3, "card": 8,
-                    "reel graphics": 3, "sm post": 3
-                }
-                # robust matching that uses substrings (e.g., "SM post – static")
-                keys_sorted = sorted(points_map.keys(), key=len, reverse=True)
-
-                def _type_key(val: str) -> str:
-                    s = (str(val) if pd.notna(val) else "").strip().lower()
-                    if not s:
-                        return "other"
-                    for k in keys_sorted:
-                        if k in s:
-                            return k
+            def _type_key(val: str) -> str:
+                s = (str(val) if pd.notna(val) else "").strip().lower()
+                if not s:
                     return "other"
+                for k in keys_sorted:
+                    if k in s:
+                        return k
+                return "other"
 
-                # Normalize type and compute points-per-task & row points (1 row = 1 task)
-                month_scope_df = month_scope_df.copy()
-                month_scope_df["TypeKey"] = month_scope_df.get("Content Type", "").apply(_type_key)
-                month_scope_df["PtsPerTask"] = month_scope_df["TypeKey"].map(points_map).fillna(1).astype(int)
-                month_scope_df["Points"] = month_scope_df["PtsPerTask"]
+            month_scope_df = month_scope_df.copy()
+            month_scope_df["TypeKey"] = month_scope_df.get("Content Type", "").apply(_type_key)
+            month_scope_df["PtsPerTask"] = month_scope_df["TypeKey"].map(points_map).fillna(1).astype(int)
+            month_scope_df["Points"] = month_scope_df["PtsPerTask"]
 
-                # 4) Leaderboard (sum of points per designer) — used for medals & order
-                if "Designer Name" not in month_scope_df.columns:
-                    st.info("No 'Designer Name' column found.")
+            if role_mode == "Designer of the Month":
+                person_col = "Designer Name"
+                heading = "🏆 Employee of the Month"
+            else:
+                person_col = "Assigned By"  # <-- Adjust this column name if your data uses a different one
+                heading = "📬 Assigner of the Month"
+
+            st.markdown(f"### {heading}")
+            if person_col not in month_scope_df.columns:
+                st.info(f"No '{person_col}' column found.")
+            else:
+                # -- rest of the logic stays same; just plug in `person_col` dynamically
+                emp_points = (
+                    month_scope_df.groupby(person_col)["Points"]
+                    .sum()
+                    .sort_values(ascending=False)
+                    .reset_index()
+                )
+
+                if emp_points.empty:
+                    st.info("No completed tasks to score.")
                 else:
-                    emp_points = (
-                        month_scope_df.groupby("Designer Name")["Points"]
-                        .sum()
-                        .sort_values(ascending=False)
+                    medals = ["🥇", "🥈", "🥉"]
+                    top3 = emp_points.head(3)
+                    for i, row in top3.iterrows():
+                        medal = medals[i] if i < len(medals) else "🏅"
+                        st.markdown(f"{medal} **{row[person_col]}** — **{int(row['Points'])} pts**")
+
+                    # --- Chart + legend ---
+                    agg = (
+                        month_scope_df
+                        .groupby([person_col, "TypeKey", "PtsPerTask"], dropna=False)
+                        .agg(Tasks=("TypeKey", "count"), Points=("Points", "sum"))
                         .reset_index()
                     )
 
-                    if emp_points.empty:
-                        st.info("No completed tasks to score for the selected month.")
-                    else:
-                        # Top 3 with medals
-                        medals = ["🥇", "🥈", "🥉"]
-                        top3 = emp_points.head(3)
-                        for i, row in top3.iterrows():
-                            medal = medals[i] if i < len(medals) else "🏅"
-                            st.markdown(f"{medal} **{row['Designer Name']}** — **{int(row['Points'])} pts**")
+                    designer_totals = agg.groupby(person_col)["Points"].sum().sort_values(ascending=False)
+                    designer_order = designer_totals.index.tolist()
+                    agg[person_col] = pd.Categorical(agg[person_col], categories=designer_order, ordered=True)
 
-                        # --- Aggregation for stacked vertical bars (designer x type) ---
-                        viz_df = month_scope_df.copy()
-                        agg = (
-                            viz_df
-                            .groupby(["Designer Name", "TypeKey", "PtsPerTask"], dropna=False)
-                            .agg(Tasks=("TypeKey", "count"),
-                                 Points=("Points", "sum"))
-                            .reset_index()
-                        )
+                    def _label_with_points(row):
+                        tk = row["TypeKey"] if row["TypeKey"] else "other"
+                        pts = int(row["PtsPerTask"])
+                        return f"{tk} ({pts})"
 
-                        # Order designers by total points (desc)
-                        designer_totals = agg.groupby("Designer Name")["Points"].sum().sort_values(ascending=False)
-                        designer_order = designer_totals.index.tolist()
-                        agg["Designer Name"] = pd.Categorical(agg["Designer Name"], categories=designer_order, ordered=True)
+                    agg["TypeLabel"] = agg.apply(_label_with_points, axis=1)
+                    type_totals = agg.groupby("TypeLabel")["Points"].sum().sort_values(ascending=False)
+                    type_order = type_totals.index.tolist()
+                    palette = px.colors.qualitative.D3
+                    color_map = {lbl: palette[i % len(palette)] for i, lbl in enumerate(type_order)}
 
-                        # Legend labels like "sm post (3)"
-                        def _label_with_points(row):
-                            tk = row["TypeKey"] if row["TypeKey"] else "other"
-                            pts = int(row["PtsPerTask"])
-                            return f"{tk} ({pts})"
+                    fig_emp = px.bar(
+                        agg,
+                        x=person_col,
+                        y="Points",
+                        color="TypeLabel",
+                        category_orders={person_col: designer_order, "TypeLabel": type_order},
+                        color_discrete_map=color_map,
+                        barmode="stack",
+                        text="Points",
+                    )
 
-                        agg["TypeLabel"] = agg.apply(_label_with_points, axis=1)
+                    designer_total_map = designer_totals.to_dict()
+                    agg["_DesignerTotal"] = agg[person_col].map(designer_total_map)
+                    fig_emp.update_traces(
+                        customdata=list(zip(agg["Tasks"], agg["PtsPerTask"], agg["_DesignerTotal"])),
+                        hovertemplate=(
+                            "<b>%{x}</b><br>%{trace.name}<br>"
+                            "Tasks: %{customdata[0]}<br>Pts per task: %{customdata[1]}<br>"
+                            "Subtotal points: %{y}<br>Total: %{customdata[2]}<extra></extra>"
+                        ),
+                        textposition="outside",
+                        cliponaxis=False,
+                        showlegend=False,
+                    )
 
-                        # Sort legend entries by total points across all designers (desc)
-                        type_totals = agg.groupby("TypeLabel")["Points"].sum().sort_values(ascending=False)
-                        type_order = type_totals.index.tolist()
+                    chart_height = max(380, 26 * max(1, len(designer_order)))
+                    fig_emp.update_layout(
+                        height=chart_height,
+                        margin=dict(l=10, r=10, t=30, b=60),
+                        xaxis_title="", yaxis_title="Points",
+                        showlegend=False,
+                    )
 
-                        # --- Color mapping (consistent between chart and custom legend) ---
-                        palette = px.colors.qualitative.D3  # choose any Plotly qualitative palette
-                        color_map = {lbl: palette[i % len(palette)] for i, lbl in enumerate(type_order)}
+                    c_chart, c_legend = st.columns([0.74, 0.26])
+                    with c_chart:
+                        st.plotly_chart(fig_emp, use_container_width=True)
+                    with c_legend:
+                        legend_inner_height = chart_height - 44
+                        legend_inner_height = max(legend_inner_height, 220)
+                        st.markdown("**Legend — Type (points)**")
+                        legend_html = f"""
+                        <div style="height:{legend_inner_height}px;overflow-y:auto;
+                                    border:1px solid rgba(0,0,0,0.08);border-radius:10px;
+                                    padding:8px 10px;background-color: var(--legend-bg, rgba(255,255,255,0.9));
+                                    color: var(--legend-fg, #000);">
+                            <div style='display:flex;flex-direction:column;gap:6px;'>
+                        """
+                        for lbl in type_order:
+                            color = color_map.get(lbl, "#888")
+                            legend_html += (
+                                "<div style='display:flex;align-items:center;'>"
+                                f"<span style='display:inline-block;width:12px;height:12px;"
+                                f"background:{color};border-radius:2px;margin-right:8px;flex:0 0 auto;'></span>"
+                                f"<span style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{lbl}</span>"
+                                "</div>"
+                            )
+                        legend_html += "</div></div>"
+                        st.markdown(legend_html, unsafe_allow_html=True)
 
-                        # --- Build stacked vertical bar chart (disable built-in legend) ---
-                        import plotly.express as px  # ensure px is in scope in this block
-                        fig_emp = px.bar(
-                            agg,
-                            x="Designer Name",
-                            y="Points",
-                            color="TypeLabel",
-                            category_orders={
-                                "Designer Name": designer_order,
-                                "TypeLabel": type_order,
-                            },
-                            color_discrete_map=color_map,
-                            barmode="stack",
-                            text="Points",
-                        )
-
-                        # Rich hover: Designer → Type → Tasks → Pts/task → Subtotal → Designer total
-                        designer_total_map = designer_totals.to_dict()
-                        agg["_DesignerTotal"] = agg["Designer Name"].map(designer_total_map)
-                        fig_emp.update_traces(
-                            customdata=list(zip(agg["Tasks"], agg["PtsPerTask"], agg["_DesignerTotal"])),
-                            hovertemplate=(
-                                "<b>%{x}</b><br>"
-                                "%{trace.name}<br>"             # e.g., "sm post (3)"
-                                "Tasks: %{customdata[0]}<br>"
-                                "Pts per task: %{customdata[1]}<br>"
-                                "Subtotal points: %{y}<br>"
-                                "Designer total: %{customdata[2]}"
-                                "<extra></extra>"
-                            ),
-                            textposition="outside",
-                            cliponaxis=False,
-                            showlegend=False,  # we'll render our own legend in the right column
-                        )
-
-                        # Chart height (used for legend container too)
-                        chart_height = max(380, 26 * max(1, len(designer_order)))
-
-                        fig_emp.update_layout(
-                            height=chart_height,
-                            margin=dict(l=10, r=10, t=30, b=60),
-                            xaxis_title="",
-                            yaxis_title="Points",
-                            showlegend=False,
-                        )
-
-                        # --- Two-column layout: chart (left) + custom legend (right, scrollable) ---
-                        c_chart, c_legend = st.columns([0.74, 0.26])  # adjust ratios if needed
-
-                        with c_chart:
-                            st.plotly_chart(fig_emp, use_container_width=True)
-
-                        with c_legend:
-                            # Scrollable legend aligned to chart height
-                            legend_inner_height = chart_height - 44  # leave room for header/padding
-                            if legend_inner_height < 220:
-                                legend_inner_height = 220  # minimum sensible height
-
-                            st.markdown("**Legend — Type (points)**")
-                            legend_html = f"""
-                            <div style="
-                                height:{legend_inner_height}px;
-                                overflow-y:auto;
-                                border:1px solid rgba(0,0,0,0.08);
-                                border-radius:10px;
-                                padding:8px 10px;
-                                background-color: var(--legend-bg, rgba(255,255,255,0.9));
-                                color: var(--legend-fg, #000);
-                            ">
-                                <div style='display:flex;flex-direction:column;gap:6px;'>
-                            """
-
-                            for lbl in type_order:
-                                color = color_map.get(lbl, "#888")
-                                legend_html += (
-                                    "<div style='display:flex;align-items:center;'>"
-                                    f"<span style='display:inline-block;width:12px;height:12px;"
-                                    f"background:{color};border-radius:2px;margin-right:8px;flex:0 0 auto;'></span>"
-                                    f"<span style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{lbl}</span>"
-                                    "</div>"
-                                )
-                            legend_html += "</div></div>"
-                            st.markdown(legend_html, unsafe_allow_html=True)
-                            st.caption("Hover a bar to see tasks × points and subtotals.")
-
-                        # 5) Insights (line bullets)
-                        st.markdown("**🔎 Monthly insights (completed only)**")
-                        lines = []
-
-                        # Overall: top scorer
-                        top_name = top3.iloc[0]["Designer Name"]
-                        top_pts = int(top3.iloc[0]["Points"])
-                        lines.append(f"- **Top scorer**: {top_name} with **{top_pts} points**.")
-
-                        # Overall: most common category by count (within completed scope)
-                        ct_counts = (
-                            month_scope_df.groupby("TypeKey")
-                            .size()
-                            .sort_values(ascending=False)
-                        )
-                        if not ct_counts.empty:
-                            lines.append(f"- **Most common task type**: {ct_counts.index[0]} (**{int(ct_counts.iloc[0])}** tasks).")
-
-                        # Overall: highest-scoring category (sum of points by type)
-                        ct_points = (
-                            month_scope_df.groupby("TypeKey")["Points"]
-                            .sum()
-                            .sort_values(ascending=False)
-                        )
-                        if not ct_points.empty:
-                            lines.append(f"- **Highest scoring category**: {ct_points.index[0]} (**{int(ct_points.iloc[0])}** pts).")
-
-                        # Per-designer: their most-done category (by count), show a few lines
-                        per_designer_ct = (
-                            month_scope_df.groupby(["Designer Name", "TypeKey"])
-                            .size()
-                            .reset_index(name="Count")
-                        )
-                        # Choose up to 5 designers to summarize (sorted by total points)
-                        topN = min(5, len(emp_points))
-                        top_designers = emp_points["Designer Name"].head(topN).tolist()
-
-                        for name in top_designers:
-                            sub = per_designer_ct[per_designer_ct["Designer Name"] == name]
-                            if sub.empty:
-                                continue
-                            idx = sub["Count"].idxmax()
-                            best_ct = sub.loc[idx, "TypeKey"]
-                            best_ct_n = int(sub.loc[idx, "Count"])
-                            total_pts = int(emp_points.loc[emp_points["Designer Name"] == name, "Points"].iloc[0])
-                            lines.append(f"- **{name}** did the most **{best_ct}** (**{best_ct_n}** tasks; **{total_pts} pts**).")
-
-                        for ln in lines:
-                            st.markdown(ln)
+                    # --- Insights ---
+                    st.markdown("**🔎 Monthly insights (completed only)**")
+                    lines = []
+                    top_name = top3.iloc[0][person_col]
+                    top_pts = int(top3.iloc[0]["Points"])
+                    lines.append(f"- **Top scorer**: {top_name} with **{top_pts} points**.")
+                    ct_counts = month_scope_df.groupby("TypeKey").size().sort_values(ascending=False)
+                    if not ct_counts.empty:
+                        lines.append(f"- **Most common task type**: {ct_counts.index[0]} (**{int(ct_counts.iloc[0])}** tasks).")
+                    ct_points = month_scope_df.groupby("TypeKey")["Points"].sum().sort_values(ascending=False)
+                    if not ct_points.empty:
+                        lines.append(f"- **Highest scoring category**: {ct_points.index[0]} (**{int(ct_points.iloc[0])}** pts).")
+                    per_ct = month_scope_df.groupby([person_col, "TypeKey"]).size().reset_index(name="Count")
+                    topN = min(5, len(emp_points))
+                    top_people = emp_points[person_col].head(topN).tolist()
+                    for name in top_people:
+                        sub = per_ct[per_ct[person_col] == name]
+                        if sub.empty: continue
+                        idx = sub["Count"].idxmax()
+                        best_ct = sub.loc[idx, "TypeKey"]
+                        best_ct_n = int(sub.loc[idx, "Count"])
+                        total_pts = int(emp_points.loc[emp_points[person_col] == name, "Points"].iloc[0])
+                        lines.append(f"- **{name}** did the most **{best_ct}** (**{best_ct_n}** tasks; **{total_pts} pts**).")
+                    for ln in lines:
+                        st.markdown(ln)
 else:
     st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
 
