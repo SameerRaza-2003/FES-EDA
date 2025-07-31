@@ -50,12 +50,17 @@ st.markdown(
         padding: 10px 0 6px 0;
         margin-bottom: 12px;
     ">
-        <h1 style="font-size: 42px; font-weight: 800; margin-bottom: 0; color: #0f172a;">
-            🚀 FES <span style="color: #2563eb;">Pulse</span>
+        <h1 style="
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 0;
+            color: var(--text-900);
+        ">
+            🚀 FES <span style="color: var(--brand);">Pulse</span>
         </h1>
         <p style="
-            font-size: 16px; 
-            color: #475569; 
+            font-size: 16px;
+            color: var(--text-500);
             margin-top: 6px;
             font-style: italic;
         ">
