@@ -145,7 +145,7 @@ html[data-theme="dark"] .navbar a:hover {
 </style>
 
 <div class="navbar">
-    <a href="#task-completion-overview">📊Overview</a>
+    <a href="#task-overview">📊Overview</a>
     <a href="#individual-task-breakdown">📋 Task Breakdown</a>
     <a href="#show-top-n-priority-tasks">⚡ Priority Chart</a>
     <a href="#team-comparison--completed-vs-remaining">🧑‍🤝‍🧑 Team Comparison</a>
@@ -519,7 +519,7 @@ st.progress(completion_pct / 100 if total_tasks else 0)
 # ======================
 # 🏆 Employee of the Month / Assigner of the Month (Completed-only + monthly insights)
 # ======================
-st.markdown('<a name="team-overview"></a>', unsafe_allow_html=True)
+st.markdown('<a name="task-overview"></a>', unsafe_allow_html=True)
 
 if selected_designer=="All":
     with st.container():
@@ -698,30 +698,38 @@ if selected_designer=="All":
 
                         st.markdown("---")
     st.markdown('<a name="individual-task-breakdown"></a>', unsafe_allow_html=True)
-    st.markdown("### 📋 Individual Task Breakdown")
+    if role_mode == "Assigner of the Month":
+        st.markdown("### 📋 Individual Task Breakdown")
     
-
-    for name in top_people:
-        person_df = month_scope_df[month_scope_df[person_col] == name].copy()
-        if person_df.empty:
-            continue
-        breakdown = (
-            person_df.groupby("TypeKey")
-            .agg(
-                TaskCount=("TypeKey", "count"),
-                PtsPerTask=("PtsPerTask", "first"),
-                TotalPoints=("Points", "sum")
-            ).reset_index()
-        )
-
-        with st.expander(f"🔽 {name} — {len(person_df)} tasks"):
-            st.dataframe(breakdown.rename(columns={
-                "TypeKey": "Task Type",
-                "TaskCount": "Count",
-                "PtsPerTask": "Pts/Task",
-                "TotalPoints": "Points"
-            }), use_container_width=True)
-
+        assigner_col = "Assigned By"
+        top_assigners = month_scope_df[assigner_col].dropna().unique()
+    
+        if len(top_assigners) == 0:
+            st.info("No assigners found in the selected filters.")
+        else:
+            for name in top_assigners:
+                person_df = month_scope_df[month_scope_df[assigner_col] == name].copy()
+                if person_df.empty:
+                    continue
+                
+                breakdown = (
+                    person_df.groupby("TypeKey")
+                    .agg(
+                        TaskCount=("TypeKey", "count"),
+                        PtsPerTask=("PtsPerTask", "first"),
+                        TotalPoints=("Points", "sum")
+                    ).reset_index().sort_values("TotalPoints", ascending=False)
+                )
+    
+                with st.expander(f"🔽 {name} — {len(person_df)} tasks"):
+                    st.dataframe(breakdown.rename(columns={
+                        "TypeKey": "Task Type",
+                        "TaskCount": "Count",
+                        "PtsPerTask": "Pts/Task",
+                        "TotalPoints": "Points"
+                    }), use_container_width=True)
+    
+    
     else:
         st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
 # 📋 INDIVIDUAL TASK BREAKDOWN (Completed Only — Unified Points)
