@@ -40,6 +40,9 @@ def uniquify_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 st.set_page_config(layout="wide")
+# Add this at the very beginning of your script (just after st.set_page_config)
+
+
 # ======================
 # 🌟 Custom App Title
 # ======================
@@ -56,7 +59,7 @@ st.markdown(
             margin-bottom: 0;
             color: var(--text-900);
         ">
-            🚀 FES <span style="color: #2563eb;">Pulse</span>
+             FES <span style="color: #2563eb;">Pulse</span>
         </h1>
         <p style="
             font-size: 16px;
@@ -71,6 +74,86 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+st.markdown('<a name="top"></a>', unsafe_allow_html=True)
+
+# 🌐 Navigation Bar
+st.markdown("""
+<style>
+:root {
+    --nav-bg-light: rgba(255, 255, 255, 0.85);
+    --nav-bg-dark: rgba(30, 30, 30, 0.85);
+    --nav-link-light: #2563eb;
+    --nav-link-dark: #60a5fa;
+    --nav-hover-light: rgba(37, 99, 235, 0.1);
+    --nav-hover-dark: rgba(96, 165, 250, 0.1);
+}
+
+/* Light Mode */
+html[data-theme="light"] .navbar {
+    background-color: var(--nav-bg-light);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.1);
+}
+/* Dark Mode */
+html[data-theme="dark"] .navbar {
+    background-color: var(--nav-bg-dark);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.navbar {
+    padding: 12px 20px;
+    border-radius: 14px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+}
+
+.navbar a {
+    text-decoration: none;
+    font-size: 15px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+/* Text Colors */
+html[data-theme="light"] .navbar a {
+    color: var(--nav-link-light);
+}
+html[data-theme="dark"] .navbar a {
+    color: var(--nav-link-dark);
+}
+
+/* Hover Effects */
+html[data-theme="light"] .navbar a:hover {
+    background-color: var(--nav-hover-light);
+    transform: scale(1.05);
+}
+html[data-theme="dark"] .navbar a:hover {
+    background-color: var(--nav-hover-dark);
+    transform: scale(1.05);
+}
+</style>
+
+<div class="navbar">
+    <a href="#task-completion-overview">📊Overview</a>
+    <a href="#individual-task-breakdown">📋 Task Breakdown</a>
+    <a href="#show-top-n-priority-tasks">⚡ Priority Chart</a>
+    <a href="#team-comparison--completed-vs-remaining">🧑‍🤝‍🧑 Team Comparison</a>
+    <a href="#tasks-completed-by-weekday">📅 Weekday Breakdown</a>
+    <a href="#remaining-tasks-with-posting-info">📡 Remaining Tasks</a>
+    <a href="#posting-status-summary">📬 Posting Status</a>
+</div>
+""", unsafe_allow_html=True)
 
 
 
@@ -308,17 +391,10 @@ primary_date_from, primary_date_to = st.sidebar.date_input(
 
 # Apply Designer/Assigner filters first
 filtered = df.copy()
-# 🔧 Fully sanitize blank/invalid designer and assigner names
-for col in ["Designer Name", "Assigned By"]:
-    if col in filtered.columns:
-        filtered[col] = (
-            filtered[col]
-            .astype(str)
-            .fillna("")
-            .str.strip()
-        )
-        # Remove blanks, 'nan', 'none', etc.
-        filtered = filtered[~filtered[col].str.lower().isin(["", "nan", "none"])]
+if "Designer Name" in filtered.columns and selected_designer and selected_designer != "All":
+    filtered = filtered[filtered["Designer Name"] == selected_designer]
+if "Assigned By" in filtered.columns and selected_by and selected_by != "All":
+    filtered = filtered[filtered["Assigned By"] == selected_by]
 
 # Ensure Assigned Date is datetime (idempotent)
 if "Assigned Date" in filtered.columns:
@@ -330,7 +406,6 @@ if "Assigned Date" in filtered.columns and primary_date_from and primary_date_to
         (filtered["Assigned Date"] >= pd.to_datetime(primary_date_from)) &
         (filtered["Assigned Date"] <= pd.to_datetime(primary_date_to))
     ]
-
 # ----------------------------
 # Global filters (useful extras)
 # ----------------------------
@@ -444,9 +519,12 @@ st.progress(completion_pct / 100 if total_tasks else 0)
 # ======================
 # 🏆 Employee of the Month / Assigner of the Month (Completed-only + monthly insights)
 # ======================
+st.markdown('<a name="team-overview"></a>', unsafe_allow_html=True)
 
 if selected_designer=="All":
     with st.container():
+        st.markdown('<a name="task-completion-overview"></a>', unsafe_allow_html=True)
+
         st.subheader("🏆 Employee of the Month")
         st.markdown("#### 📅 Monthly Recognition")
 
@@ -619,7 +697,9 @@ if selected_designer=="All":
                             st.markdown(ln)
 
                         st.markdown("---")
+    st.markdown('<a name="individual-task-breakdown"></a>', unsafe_allow_html=True)
     st.markdown("### 📋 Individual Task Breakdown")
+    
 
     for name in top_people:
         person_df = month_scope_df[month_scope_df[person_col] == name].copy()
@@ -644,16 +724,95 @@ if selected_designer=="All":
 
     else:
         st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
+# 📋 INDIVIDUAL TASK BREAKDOWN (Completed Only — Unified Points)
+# ===============================================================
+st.markdown('<a name="individual-task-breakdown"></a>', unsafe_allow_html=True)
+st.markdown("### 📋 Individual Task Breakdown (Completed Only)")
 
+# ✅ Apply point system from EoM
+points_map = {
+    "branding": 10, "video": 10, "reel": 10, "standee": 8,
+    "event cover": 4, "banners": 4, "carousel": 8, "paid ads": 7,
+    "newsletter": 8, "logo": 14, "dp": 1, "blogs": 3, "card": 8,
+    "reel graphics": 3, "sm post": 3
+}
+keys_sorted = sorted(points_map.keys(), key=len, reverse=True)
 
+def _type_key(val: str) -> str:
+    s = (str(val) if pd.notna(val) else "").strip().lower()
+    if not s:
+        return "other"
+    for k in keys_sorted:
+        if k in s:
+            return k
+    return "other"
+
+# ✅ Filter completed tasks only
+completed_df = filtered[filtered["Status"].astype(str).str.strip().str.lower() == "completed"].copy()
+completed_df["TypeKey"] = completed_df.get("Content Type", "").apply(_type_key)
+completed_df["PtsPerTask"] = completed_df["TypeKey"].map(points_map).fillna(1).astype(int)
+completed_df["Points"] = completed_df["PtsPerTask"]
+
+# ✅ Breakdown by person
+person_col = "Designer Name"
+top_people = completed_df[person_col].dropna().unique()
+
+if len(top_people) == 0:
+    st.info("No completed tasks available for the selected filters.")
+else:
+    for name in top_people:
+        person_df = completed_df[completed_df[person_col] == name].copy()
+        if person_df.empty:
+            continue
+
+        breakdown = (
+            person_df.groupby("TypeKey")
+            .agg(
+                TaskCount=("TypeKey", "count"),
+                PtsPerTask=("PtsPerTask", "first"),
+                TotalPoints=("Points", "sum")
+            )
+            .reset_index()
+            .sort_values("TotalPoints", ascending=False)
+        )
+
+        with st.expander(f"🔽 {name} — {len(person_df)} completed tasks"):
+            st.dataframe(
+                breakdown.rename(columns={
+                    "TypeKey": "Task Type",
+                    "TaskCount": "Count",
+                    "PtsPerTask": "Pts/Task",
+                    "TotalPoints": "Points"
+                }),
+                use_container_width=True
+            )
 
 # ---- Export (useful extra) ----
 csv = filtered.to_csv(index=False).encode("utf-8")
 st.download_button("⬇️ Download filtered CSV", data=csv, file_name="filtered_tasks.csv", mime="text/csv")
 
 # =========================
+
+# 📊 Task Completion Overview
+st.subheader("📊 Task Completion Overview")
+status_counts = filtered["Status"].value_counts().reset_index()
+status_counts.columns = ["Status", "Count"]
+fig1 = px.bar(
+    status_counts,
+    x="Status",
+    y="Count",
+    color="Status",
+    text="Count",
+    color_discrete_map={"Completed": "green", "Remaining": "red"}
+)
+fig1.update_layout(xaxis_title="", yaxis_title="Tasks", height=400)
+st.plotly_chart(fig1, use_container_width=True)
+
+
 # 🔥 Priority Tasks (Deadline + Event Cover, normalized)
 # =========================
+st.markdown('<a name="show-top-n-priority-tasks"></a>', unsafe_allow_html=True)
+
 st.subheader("🔥 Priority Tasks")
 
 # Start from the filtered view; only show remaining (not completed)
@@ -779,22 +938,9 @@ with c_bar:
     else:
         st.caption("Add a 'Content Title' column for a nicer priority chart.")
 
-# 📊 Task Completion Overview
-st.subheader("📊 Task Completion Overview")
-status_counts = filtered["Status"].value_counts().reset_index()
-status_counts.columns = ["Status", "Count"]
-fig1 = px.bar(
-    status_counts,
-    x="Status",
-    y="Count",
-    color="Status",
-    text="Count",
-    color_discrete_map={"Completed": "green", "Remaining": "red"}
-)
-fig1.update_layout(xaxis_title="", yaxis_title="Tasks", height=400)
-st.plotly_chart(fig1, use_container_width=True)
 
 # 🧑‍🤝‍🧑 Team Comparison — Completed vs Remaining
+st.markdown('<a name="team-comparison--completed-vs-remaining"></a>', unsafe_allow_html=True)
 st.subheader("🧑‍🤝‍🧑 Team Comparison — Completed vs Remaining")
 compare_dim = st.selectbox(
     "Compare by",
@@ -904,6 +1050,7 @@ if "Content Type" in filtered.columns:
 
 # 📅 Weekday Completion Distribution (Dynamic with Filters)
 # 📅 Tasks Completed by Weekday
+st.markdown('<a name="tasks-completed-by-weekday"></a>', unsafe_allow_html=True)
 if "Completion Date" in df.columns:
     st.subheader("📅 Tasks Completed by Weekday")
 
@@ -992,6 +1139,9 @@ if table_cols:
         st.info("No completed tasks for the selected Content Type(s).")
     else:
         st.dataframe(completed_df[table_cols], use_container_width=True)
+   
+   
+    st.markdown('<a name="remaining-tasks-with-posting-info"></a>', unsafe_allow_html=True)
 
     st.subheader("📋 Remaining Tasks")
     remaining_df = filtered[filtered["Status"] == "Remaining"].copy()
@@ -1000,6 +1150,116 @@ if table_cols:
         st.info("No remaining tasks for the selected Content Type(s).")
     else:
         st.dataframe(remaining_df[table_cols], use_container_width=True)
+
+# 📬 Remaining Tasks — With Posting Status, sorted by Deadline
+st.markdown('<a name="posting-status-summary"></a>', unsafe_allow_html=True)
+
+st.subheader("🕒 Remaining Tasks with Posting Info")
+
+# Make a copy and ensure dates are parsed
+remaining_tasks = df[df["Status"] == "Remaining"].copy()
+
+# Parse dates
+remaining_tasks["Assigned Date"] = _ensure_datetime_col(remaining_tasks, "Assigned Date")
+remaining_tasks["Deadline"] = _ensure_datetime_col(remaining_tasks, "Deadline")
+
+# Apply filters
+remaining_tasks = remaining_tasks[
+    (remaining_tasks["Assigned Date"] >= pd.to_datetime(primary_date_from)) &
+    (remaining_tasks["Assigned Date"] <= pd.to_datetime(primary_date_to))
+]
+if selected_designer != "All":
+    remaining_tasks = remaining_tasks[remaining_tasks["Designer Name"] == selected_designer]
+if selected_by != "All":
+    remaining_tasks = remaining_tasks[remaining_tasks["Assigned By"] == selected_by]
+
+# Interpret Posting Status
+def interpret_posting_status(x):
+    if isinstance(x, str):
+        x = x.strip()
+        if x.lower() == "posted":
+            return "✅ Posted"
+        elif x:
+            return f"💬 {x}"
+    return "❌ Not Posted"
+
+remaining_tasks["Posting Info"] = remaining_tasks.get("Posting Status", "").apply(interpret_posting_status)
+
+# --- Toggles ---
+col1, col2, col3 = st.columns([0.33, 0.33, 0.34])
+with col1:
+    prioritize_unposted = st.checkbox("⬆️ Show Not Posted on Top", value=True)
+with col2:
+    sort_by_deadline = st.checkbox("📅 Sort by Days Remaining", value=True)
+
+# Sort logic
+def posting_priority(val):
+    if val == "❌ Not Posted":
+        return 0
+    if val.startswith("💬"):
+        return 1
+    return 2  # ✅ Posted
+
+if prioritize_unposted:
+    remaining_tasks["PostPriority"] = remaining_tasks["Posting Info"].apply(posting_priority)
+else:
+    remaining_tasks["PostPriority"] = 1  # All equal priority
+
+if sort_by_deadline:
+    today = pd.Timestamp.today().normalize()
+    remaining_tasks["DaysLeft"] = (remaining_tasks["Deadline"] - today).dt.days
+    remaining_tasks["DaysLeft"] = remaining_tasks["DaysLeft"].fillna(9999)  # In case deadline is missing
+else:
+    remaining_tasks["DaysLeft"] = 9999
+
+# Final sort
+remaining_tasks = remaining_tasks.sort_values(["PostPriority", "DaysLeft", "Deadline"])
+
+# Display columns
+display_cols = ["Content Type", "Title", "Deadline", "Posting Info", "Assigned By"]
+available_cols = [col for col in display_cols if col in remaining_tasks.columns]
+
+if not remaining_tasks.empty and available_cols:
+    st.dataframe(
+        remaining_tasks[available_cols].rename(columns={
+            "Content Type": "🧾 Type",
+            "Title": "📝 Title",
+            "Deadline": "📅 Deadline",
+            "Posting Info": "📡 Posting",
+            "Assigned By": "👤 Assigned By"
+        }),
+        use_container_width=True
+    )
+else:
+    st.info("No remaining tasks match the current filters or necessary columns are missing.")
+
+
+st.markdown("""
+<style>
+#backToTopBtn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+#backToTopBtn:hover {
+    background-color: #1e40af;
+}
+</style>
+
+<a href="#top">
+    <button id="backToTopBtn" title="Back to Menu">↑</button>
+</a>
+""", unsafe_allow_html=True)
 
 # ======================
 # 👨🏻‍💻 Developer Footer (pretty & interactive)
