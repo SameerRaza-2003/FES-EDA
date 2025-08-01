@@ -368,6 +368,7 @@ quick_period = st.sidebar.radio(
 today = datetime.date.today()
 if quick_period == "All time":
     primary_default_value = (PRIMARY_DEFAULT_START, PRIMARY_DEFAULT_END)
+    primary_default_value = (datetime.date(2025, 1, 1), PRIMARY_DEFAULT_END)
 elif quick_period == "This month":
     start_m = today.replace(day=1)
     next_m = (datetime.date(today.year + (today.month == 12), 1 if today.month == 12 else today.month + 1, 1))
@@ -381,7 +382,7 @@ else:  # This year
     primary_default_value = (start_y, end_y)
 
 # --- Force default to start at Jan 1, 2024 (keeps your dynamic end date) ---
-primary_default_value = (datetime.date(2025, 1, 1), PRIMARY_DEFAULT_END)
+
 
 primary_date_from, primary_date_to = st.sidebar.date_input(
     "📅 Primary date range — by Assigned Date",
@@ -527,6 +528,7 @@ if selected_designer=="All":
 
         st.subheader("🏆 Employee of the Month")
         st.markdown("#### 📅 Monthly Recognition")
+        
 
 
         if selected_designer == "All":
@@ -648,10 +650,13 @@ if selected_designer=="All":
                             fig = go.Figure()
                             for task_type in type_order:
                                 task_df = agg[agg["TypeKey"] == task_type]
+                                pts_per_task = points_map.get(task_type, 1)  # default to 1 if not found
+                                legend_label = f"{task_type} ({pts_per_task} pts)"
+
                                 fig.add_trace(go.Bar(
                                     x=task_df[person_col],
                                     y=task_df["TotalPoints"],
-                                    name=task_type,
+                                    name=legend_label,
                                     marker_color=color_map[task_type],
                                     customdata=task_df[["TaskCount", "TotalPoints"]],
                                     hovertemplate=(
@@ -661,6 +666,7 @@ if selected_designer=="All":
                                         "Points from this type: %{customdata[1]}<extra></extra>"
                                     )
                                 ))
+
 
                             chart_height = max(420, 28 * len(designer_order))
                             fig.update_layout(
@@ -700,10 +706,10 @@ if selected_designer=="All":
     st.markdown('<a name="individual-task-breakdown"></a>', unsafe_allow_html=True)
     if role_mode == "Assigner of the Month":
         st.markdown("### 📋 Individual Task Breakdown")
-    
+
         assigner_col = "Assigned By"
         top_assigners = month_scope_df[assigner_col].dropna().unique()
-    
+
         if len(top_assigners) == 0:
             st.info("No assigners found in the selected filters.")
         else:
@@ -720,7 +726,7 @@ if selected_designer=="All":
                         TotalPoints=("Points", "sum")
                     ).reset_index().sort_values("TotalPoints", ascending=False)
                 )
-    
+
                 with st.expander(f"🔽 {name} — {len(person_df)} tasks"):
                     st.dataframe(breakdown.rename(columns={
                         "TypeKey": "Task Type",
@@ -728,8 +734,8 @@ if selected_designer=="All":
                         "PtsPerTask": "Pts/Task",
                         "TotalPoints": "Points"
                     }), use_container_width=True)
-    
-    
+
+
     else:
         st.caption("👤 Employee of the Month is hidden when a single designer is selected.")
 # 📋 INDIVIDUAL TASK BREAKDOWN (Completed Only — Unified Points)
@@ -1224,7 +1230,7 @@ else:
 remaining_tasks = remaining_tasks.sort_values(["PostPriority", "DaysLeft", "Deadline"])
 
 # Display columns
-display_cols = ["Content Type", "Title", "Deadline", "Posting Info", "Assigned By"]
+display_cols = ["Content Type", "Content Title", "Deadline", "Posting Info","Assigned Date", "Assigned By"]
 available_cols = [col for col in display_cols if col in remaining_tasks.columns]
 
 if not remaining_tasks.empty and available_cols:
@@ -1232,6 +1238,7 @@ if not remaining_tasks.empty and available_cols:
         remaining_tasks[available_cols].rename(columns={
             "Content Type": "🧾 Type",
             "Title": "📝 Title",
+            "Assigned Date": "📅 Assigned Date",
             "Deadline": "📅 Deadline",
             "Posting Info": "📡 Posting",
             "Assigned By": "👤 Assigned By"
