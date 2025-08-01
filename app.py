@@ -616,7 +616,7 @@ if selected_designer=="All":
                             # Full leaderboard (not just top 3)
                             medals = ["🥇", "🥈", "🥉"]
                             for i, row in emp_points.iterrows():
-                                medal_or_rank = medals[i] if i < len(medals) else f"#{i+1}"
+                                medal_or_rank = medals[i] if i < len(medals) else f"{i+1}"
                                 person_name = row[person_col]
                                 total_points = int(row["Points"])
                                 task_count = month_scope_df[month_scope_df[person_col] == person_name].shape[0]
