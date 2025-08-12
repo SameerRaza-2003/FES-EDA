@@ -59,7 +59,7 @@ st.markdown(
             margin-bottom: 0;
             color: var(--text-900);
         ">
-             FES <span style="color: #2563eb;">Pulse</span>
+             FES <span style="color: #2563eb;">Dukhti رگ</span>
         </h1>
         <p style="
             font-size: 16px;
